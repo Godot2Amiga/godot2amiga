@@ -1,5 +1,9 @@
 # Godot2Amiga Non-Goals
 
+Version: 1.0 (Draft)
+
+Last Updated: 2026-06-27
+
 This document defines what Godot2Amiga is **not** trying to achieve.
 
 By explicitly documenting these non-goals, the project can remain focused on its primary mission: using the Godot Editor as a modern front-end for developing native Amiga software.
