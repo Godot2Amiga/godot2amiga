@@ -2,6 +2,8 @@
 
 **Version:** 1.0 (Draft)
 
+**Last Updated:** 2026-06-27
+
 ---
 
 # 1. Purpose & Vision
