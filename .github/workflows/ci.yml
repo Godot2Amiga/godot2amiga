@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show repository structure
+        run: find . -maxdepth 3 -type f | sort
+
+      - name: Check required files
+        run: |
+          test -f README.md
+          test -f LICENSE
+          test -f CONTRIBUTING.md
+          test -f CODE_OF_CONDUCT.md
+          test -f docs/architecture.md
+          test -f docs/roadmap.md
+          test -f docs/non-goals.md
+          test -f docs/target-hardware.md
+          test -f exporter/plugin.cfg
+          test -f exporter/export_plugin.gd
