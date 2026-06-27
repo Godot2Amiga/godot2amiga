@@ -1,18 +1,31 @@
 # Godot2Amiga Roadmap
 
-Version: 1.0 (Draft)
+**Version:** 1.0 (Draft)
 
-Last Updated: 2026-06-27
+**Status:** Living Document
 
 ---
 
 # Vision
 
-The long-term goal of Godot2Amiga is to provide a modern development workflow for creating native software for classic Amiga computers.
+Godot2Amiga aims to make the Godot Editor a modern development environment for creating native software for classic Commodore Amiga computers.
 
 Development follows an incremental, milestone-driven approach.
 
-Each milestone should produce a working, demonstrable result.
+Every milestone should produce a working, demonstrable result.
+
+---
+
+# Development Principles
+
+The roadmap follows several guiding principles:
+
+* Build working software incrementally.
+* Keep the architecture modular.
+* Maintain deterministic exports.
+* Optimize for real hardware.
+* Prefer simple solutions over complex ones.
+* Deliver usable tools as early as possible.
 
 ---
 
@@ -20,93 +33,97 @@ Each milestone should produce a working, demonstrable result.
 
 ## Goal
 
-Establish the project's structure and documentation.
+Establish the project infrastructure and documentation.
 
 ### Deliverables
 
 * Repository structure
 * README
 * Architecture documentation
-* `.g2a` specification
 * Roadmap
-* GitHub setup
-* CI
+* `.g2a` specification
+* Target hardware documentation
+* Non-goals documentation
+* GitHub Issues
 * Discussions
+* CI pipeline
+* License
 * Contribution guidelines
 
-**Success Criteria**
+### Success Criteria
 
 The repository is ready for open-source collaboration.
 
 ---
 
-# Milestone 1 — Godot Frontend
+# Milestone 1 — Export Frontend
 
 ## Goal
 
-Create a functioning Godot export plugin.
+Integrate Godot with the Godot2Amiga export pipeline.
 
 ### Deliverables
 
-* Export plugin
-* Amiga export preset
-* Export profiles
+* Export Plugin
+* Export Coordinator
 * Project Scanner
 * Validator
-* Export Coordinator
+* Export Profiles
+* IR Builder
 
-**Success Criteria**
+### Success Criteria
 
-Godot can export a project into a valid `project.g2a`.
+Exporting a Godot project produces a valid `project.g2a`.
 
 ---
 
-# Milestone 2 — Project Format (.g2a)
+# Milestone 2 — Godot2Amiga Project Format
 
 ## Goal
 
-Define and implement the Godot2Amiga Project Format.
+Define and stabilize the `.g2a` project format.
 
 ### Deliverables
 
-* `project.g2a`
+* Project manifest
+* Scene representation
+* Asset representation
+* Resource model
+* Diagnostics
 * JSON schema
-* Manifest
-* Scene format
-* Asset format
-* Validation
 
-### Tools
+### Standalone Tools
 
-* `g2a-validate`
-* `g2a-inspect`
+* g2a-validate
+* g2a-inspect
 
-**Success Criteria**
+### Success Criteria
 
-A `.g2a` project can be inspected and validated independently of Godot.
+A `.g2a` project can be validated independently of Godot.
 
 ---
 
-# Milestone 3 — Backend
+# Milestone 3 — Backend Generation
 
 ## Goal
 
-Generate a native Amiga project from `.g2a`.
+Generate a native Amiga project from a `.g2a` project.
 
 ### Deliverables
 
 * Code Generator
-* Build generator
-* Runtime configuration
+* Build Generator
+* Runtime integration
+* Project templates
 * Makefile generation
 
-### Tools
+### Standalone Tool
 
-* `g2a-build`
+* g2a-build
 
-**Success Criteria**
+### Success Criteria
 
-A `.g2a` project generates a compilable Amiga project.
+A `.g2a` project generates a compilable native Amiga project.
 
 ---
 
@@ -114,20 +131,21 @@ A `.g2a` project generates a compilable Amiga project.
 
 ## Goal
 
-Run generated applications on an Amiga.
+Create the first native runtime.
 
 ### Deliverables
 
 * Startup
+* Screen initialization
 * Main loop
-* Graphics initialization
-* Input
-* Timing
 * Memory management
+* Timing
+* Input
+* Filesystem
 
-**Success Criteria**
+### Success Criteria
 
-A generated project displays a window or screen on a real or emulated Amiga.
+A generated application starts successfully on an Amiga emulator.
 
 ---
 
@@ -135,18 +153,19 @@ A generated project displays a window or screen on a real or emulated Amiga.
 
 ## Goal
 
-Display exported graphics.
+Display graphics on native hardware.
 
 ### Deliverables
 
-* Image conversion
-* Palette conversion
+* Planar graphics
 * Sprite rendering
 * Tile rendering
+* Palette conversion
+* Double buffering
 
-**Success Criteria**
+### Success Criteria
 
-A Godot sprite is visible on an Amiga.
+A Sprite2D from Godot is displayed correctly.
 
 ---
 
@@ -154,7 +173,7 @@ A Godot sprite is visible on an Amiga.
 
 ## Goal
 
-Interact with exported games.
+Support interactive applications.
 
 ### Deliverables
 
@@ -163,9 +182,9 @@ Interact with exported games.
 * Joystick
 * CD32 controller
 
-**Success Criteria**
+### Success Criteria
 
-A player can move a sprite.
+The user can control an exported application.
 
 ---
 
@@ -173,7 +192,7 @@ A player can move a sprite.
 
 ## Goal
 
-Play exported audio.
+Play music and sound effects.
 
 ### Deliverables
 
@@ -181,28 +200,30 @@ Play exported audio.
 * MOD playback
 * Audio mixer
 
-**Success Criteria**
+### Success Criteria
 
-Music and sound effects play correctly.
+Music and sound effects play correctly on target hardware.
 
 ---
 
-# Milestone 8 — Scenes
+# Milestone 8 — Scene Support
 
 ## Goal
 
-Support complete 2D scenes.
+Export complete 2D scenes.
 
 ### Deliverables
 
-* Scene loading
-* Cameras
-* TileMaps
-* Sprite nodes
+* Node hierarchy
+* Sprite2D
+* AnimatedSprite2D
+* TileMap
+* Camera2D
+* Resource references
 
-**Success Criteria**
+### Success Criteria
 
-A simple Godot scene can be exported without manual modification.
+Simple 2D Godot projects export without manual modification.
 
 ---
 
@@ -215,13 +236,14 @@ Support gameplay logic.
 ### Deliverables
 
 * Script translation
-* Events
 * Signals (subset)
 * Timers
+* Basic events
+* Scene switching
 
-**Success Criteria**
+### Success Criteria
 
-A small playable game runs on the Amiga.
+A simple playable game runs correctly.
 
 ---
 
@@ -233,13 +255,13 @@ Complete the standalone toolchain.
 
 ### Deliverables
 
-* `g2a-optimize`
-* `g2a-package`
-* `g2a-test`
+* g2a-optimize
+* g2a-package
+* g2a-test
 
-**Success Criteria**
+### Success Criteria
 
-Projects can be optimized, packaged and tested outside Godot.
+Projects can be built, tested and packaged without the Godot Editor.
 
 ---
 
@@ -249,53 +271,138 @@ Projects can be optimized, packaged and tested outside Godot.
 
 Improve performance and memory usage.
 
-### Deliverables
+### Areas
 
-* Faster graphics
-* Reduced memory
-* Asset optimization
-* Compiler improvements
+* Faster rendering
+* Smaller assets
+* Better palette generation
+* Runtime optimization
+* Memory reduction
+* Build optimization
 
 Primary optimization target:
 
 * Amiga 500
 * OCS
-* 68000
+* Motorola 68000
 * 1 MB Chip RAM
+
+### Success Criteria
+
+Exported games perform acceptably on baseline hardware.
 
 ---
 
-# Milestone 12 — Release 1.0
+# Milestone 12 — Release Candidate
 
 ## Goal
 
-First stable public release.
+Prepare the first public release.
 
-Requirements:
+### Deliverables
 
 * Stable exporter
 * Stable runtime
-* Stable `.g2a` format
+* Stable `.g2a`
 * Documentation
 * Tutorials
 * Example projects
+* Continuous Integration
 * Automated testing
+
+### Success Criteria
+
+The project is feature-complete for Version 1.0.
+
+---
+
+# Version 1.0
+
+Version 1.0 represents the first stable public release.
+
+Requirements include:
+
+* Stable export pipeline
+* Stable project format
+* Stable runtime
+* Deterministic exports
+* Working standalone tools
+* Complete documentation
+* Example games
+* Automated tests
+
+---
+
+# Beyond Version 1.0
+
+Future work may include:
+
+* Additional runtime optimizations
+* Improved scripting support
+* More Godot nodes
+* Better asset optimization
+* Advanced packaging
+* Improved debugging tools
+
+These items are intentionally excluded from Version 1.0 planning.
+
+---
+
+# Milestone Dependencies
+
+```text
+M0  Foundation
+ │
+ ▼
+M1  Export Frontend
+ │
+ ▼
+M2  .g2a Project Format
+ │
+ ▼
+M3  Backend Generation
+ │
+ ▼
+M4  Runtime
+ │
+ ▼
+M5  Graphics
+ │
+ ├────────────┐
+ ▼            ▼
+M6 Input   M7 Audio
+ │            │
+ └────┬───────┘
+      ▼
+M8 Scene Support
+      │
+      ▼
+M9 Gameplay
+      │
+      ▼
+M10 Tooling
+      │
+      ▼
+M11 Optimization
+      │
+      ▼
+M12 Release Candidate
+      │
+      ▼
+Version 1.0
+```
 
 ---
 
 # Guiding Principles
 
-Every milestone must produce something that works.
+Every milestone should:
 
-Prefer incremental progress over large rewrites.
+* Produce working software.
+* Build on previous milestones.
+* Preserve deterministic exports.
+* Keep the architecture modular.
+* Improve the developer experience.
+* Maintain compatibility with the documented architecture.
 
-Keep the architecture modular.
-
-Optimize for real Amiga hardware.
-
-Always preserve a clear separation between:
-
-* Godot frontend
-* `.g2a` project format
-* Backend tools
-* Runtime
+The roadmap is a living document and may evolve as implementation progresses, but architectural principles should remain stable.
