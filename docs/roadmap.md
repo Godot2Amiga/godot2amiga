@@ -1,6 +1,8 @@
 # Godot2Amiga Roadmap
 
-**Version:** 1.0 (Draft)
+Version: 1.0 (Draft)
+
+Last Updated: 2026-06-27
 
 ---
 
