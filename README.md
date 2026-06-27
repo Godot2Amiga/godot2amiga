@@ -160,43 +160,17 @@ tools/             Build and conversion tools
 
 ---
 
-# Roadmap
+## Roadmap
 
-## Phase 1
+The development plan is maintained in:
 
-* Repository setup
-* Documentation
-* Architecture
-* Export plugin prototype
+- [docs/roadmap.md](docs/roadmap.md)
 
-## Phase 2
+Current focus:
 
-* Scene export
-* Asset pipeline
-* Runtime framework
-
-## Phase 3
-
-* Rendering
-* Sprites
-* Tilemaps
-* Animation
-* Audio
-* Input
-
-## Phase 4
-
-* Script compiler
-* Optimizer
-* Packaging
-* Example games
-
-## Phase 5
-
-* Performance tuning
-* RTG support
-* Advanced effects
-* Community releases
+- Foundation
+- Godot export plugin
+- `.g2a` project format
 
 ---
 
