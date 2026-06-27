@@ -1,303 +1,614 @@
 # Godot2Amiga Architecture
 
-## Purpose
-
-Godot2Amiga uses the Godot Editor as a modern front-end for creating native Amiga games.
-
-The project does not attempt to port the Godot Engine to Amiga hardware. Instead, Godot is used as an editor, asset manager, scene designer, animation tool and export interface.
-
-The generated game is a native Amiga program using a lightweight Amiga-specific runtime.
+**Version:** 1.0 (Draft)
 
 ---
+
+# 1. Purpose & Vision
+
+## Purpose
+
+Godot2Amiga is an open-source project that transforms the Godot Editor into a modern development environment for creating native software for classic Commodore Amiga computers.
+
+The project does **not** attempt to port the Godot Engine to Amiga hardware. Instead, it uses the Godot Editor as a powerful front-end for designing games while generating software that runs directly on real Amiga systems.
+
+Godot provides the development experience.
+
+Godot2Amiga provides the export pipeline.
+
+The Amiga runs native code.
+
+---
+
+## Vision
+
+Developing software for classic computers should not require using development tools from the 1980s.
+
+Godot2Amiga aims to reuse the strengths of modern tools while respecting the capabilities and limitations of the Amiga platform.
+
+The long-term vision is to make the Godot Editor one of the best environments for developing new Amiga games.
+
+---
+
+## Project Statement
+
+Godot2Amiga is best described as:
+
+> A modern front-end for creating native Amiga software.
+
+It is **not**:
+
+* a new game engine
+* an emulator
+* an Amiga port of Godot
+* a virtual machine
+* a compatibility layer
+
+Instead, it is a collection of tools that translate Godot projects into native Amiga projects.
+
+---
+
+## Core Idea
+
+A developer should be able to:
+
+1. Create a project in Godot.
+2. Design scenes visually.
+3. Organize assets.
+4. Configure animations.
+5. Write supported gameplay logic.
+6. Press **Export**.
+7. Build and run the generated project on a real Amiga.
+
+The generated application should behave like software written specifically for the Amiga.
+
+---
+
+## Guiding Philosophy
+
+Godot2Amiga follows a simple philosophy:
+
+> Modern tools. Native software.
+
+The editor should provide convenience.
+
+The generated software should remain efficient, predictable and respectful of the target hardware.
+
+Whenever a trade-off must be made, correctness and performance on real Amiga hardware take priority over complete feature compatibility with Godot.
+
+---
+
+# 2. System Overview
 
 ## High-Level Architecture
 
 ```text
-Godot Editor
-     |
-     v
-Godot2Amiga Export Plugin
-     |
-     v
-Scene + Asset Export
-     |
-     v
-Compiler / Code Generator
-     |
-     v
-Amiga Runtime + SDK
-     |
-     v
-Native Amiga Executable
-     |
-     v
-Classic Amiga Hardware
+                 +-----------------------+
+                 |     Godot Editor      |
+                 +-----------------------+
+                            |
+                            v
+                 +-----------------------+
+                 |    Export Plugin      |
+                 +-----------------------+
+                            |
+                            v
+                 +-----------------------+
+                 | Export Coordinator    |
+                 +-----------------------+
+                            |
+        +-------------------+-------------------+
+        |                   |                   |
+        v                   v                   v
++----------------+   +----------------+   +----------------+
+| Project Scanner|   |   Validator    |   | Export Profiles|
++----------------+   +----------------+   +----------------+
+        |                   |
+        +---------+---------+
+                  |
+                  v
+          +----------------+
+          |   IR Builder   |
+          +----------------+
+                  |
+                  v
+          +----------------+
+          |  project.g2a   |
+          +----------------+
+                  |
+        +---------+---------+
+        |                   |
+        v                   v
++----------------+   +----------------+
+| Asset Pipeline |   | Code Generator |
++----------------+   +----------------+
+        |                   |
+        +---------+---------+
+                  |
+                  v
+        +----------------------+
+        | Native Amiga Project |
+        +----------------------+
+                  |
+                  v
+        +----------------------+
+        | Compiler Toolchain   |
+        +----------------------+
+                  |
+                  v
+        +----------------------+
+        | Native Executable    |
+        +----------------------+
+                  |
+                  v
+        +----------------------+
+        | Classic Amiga        |
+        +----------------------+
 ```
 
 ---
 
-## Main Components
+## Architectural Layers
 
-### 1. Godot Editor
+Godot2Amiga is divided into four major layers.
 
-Godot provides the development environment.
+### 1. Development Layer
+
+The Development Layer consists of the Godot Editor.
+
+Responsibilities:
+
+* Scene editing
+* Asset management
+* Animation editing
+* Project configuration
+* Export settings
+
+Nothing from this layer is included in the final Amiga executable.
+
+---
+
+### 2. Export Layer
+
+The Export Layer runs on the development machine.
+
+Responsibilities:
+
+* Integrate with Godot
+* Scan the project
+* Validate supported features
+* Apply export profiles
+* Build the `.g2a` project representation
+
+---
+
+### 3. Generation Layer
+
+The Generation Layer consumes `project.g2a` and creates a native Amiga project.
+
+Responsibilities:
+
+* Convert assets
+* Generate source code
+* Generate build files
+* Prepare runtime configuration
+
+---
+
+### 4. Runtime Layer
+
+The Runtime Layer is the only layer that runs on the Amiga.
+
+Responsibilities:
+
+* Startup
+* Graphics
+* Audio
+* Input
+* Timing
+* Memory management
+* File loading
+* Main loop
+
+---
+
+# 3. Core Components
+
+## Godot Editor
+
+Godot is used as the authoring environment.
 
 Used for:
 
-* Scene layout
-* Object placement
-* Sprite setup
-* Animation editing
-* UI design
+* Level design
+* Scene composition
 * Asset organization
-* Project settings
+* Animation
+* UI layout
 * Export workflow
 
 Godot is not included in the final Amiga game.
 
 ---
 
-### 2. Export Plugin
+## Export Plugin
 
-The export plugin runs inside Godot.
+The Export Plugin integrates Godot2Amiga into the Godot Editor.
 
 Responsibilities:
 
-* Add an Amiga export target
-* Read project settings
-* Analyze selected scenes
-* Validate unsupported features
-* Export scene data
-* Export asset data
-* Generate build files
-* Invoke external tools where appropriate
+* Register an Amiga export target
+* Provide export settings
+* Launch the export pipeline
+* Report errors and warnings
+* Manage export profiles
 
-Initial goal:
+The plugin should remain thin. Complex logic should live in separate tools where possible.
+
+---
+
+## Export Coordinator
+
+The Export Coordinator orchestrates the complete export process.
+
+Responsibilities:
+
+* Invoke the Project Scanner
+* Invoke the Validator
+* Invoke the IR Builder
+* Write `project.g2a`
+* Optionally invoke build tools
+* Collect diagnostics
+
+The coordinator should not parse scenes, convert assets or generate native code directly.
+
+---
+
+## Project Scanner
+
+The Project Scanner reads the Godot project.
+
+Responsibilities:
+
+* Discover scenes
+* Discover resources
+* Discover assets
+* Resolve dependencies
+* Collect project metadata
+
+The scanner should not decide whether a feature is supported. That is the Validator's responsibility.
+
+---
+
+## Validator
+
+The Validator checks whether the project can be exported to the selected target profile.
+
+Responsibilities:
+
+* Check supported node types
+* Check asset limits
+* Check memory constraints
+* Check unsupported Godot features
+* Produce clear diagnostics
+
+Unsupported features should fail early with useful error messages.
+
+---
+
+## Export Profiles
+
+Export Profiles describe the selected target hardware.
+
+Example profiles:
+
+* Amiga 500 / OCS / 68000 / 1 MB Chip RAM
+* Amiga 600 / ECS
+* Amiga 1200 / AGA / 68020
+* CD32
+* RTG
+
+Profiles influence validation, asset conversion, runtime configuration and compiler settings.
+
+---
+
+## IR Builder
+
+The IR Builder converts scanned project data into the `.g2a` project format.
+
+Responsibilities:
+
+* Create stable identifiers
+* Normalize scene data
+* Normalize resource references
+* Write project metadata
+* Produce deterministic output
+
+The IR Builder should not generate Amiga code.
+
+---
+
+# 4. Godot2Amiga Project Format (.g2a)
+
+## Purpose
+
+The `.g2a` format is the contract between the Godot-facing frontend and the backend tools.
+
+It represents an exported project after analysis and validation, but before target-specific generation.
+
+It separates:
+
+* Godot project analysis
+* Asset conversion
+* Code generation
+* Runtime configuration
+
+---
+
+## Format
+
+A `.g2a` project is a directory, not a single file.
+
+Example:
 
 ```text
-Export a Godot project into a build/amiga/ folder.
+project.g2a/
+    manifest.json
+    project.json
+    export_profile.json
+    scenes/
+    assets/
+    scripts/
+    resources/
+    metadata/
+    diagnostics/
 ```
 
+Early versions should use JSON because it is human-readable and easy to debug.
+
+A binary format may be introduced later if needed.
+
 ---
 
-### 3. Scene Exporter
+## Principles
 
-The scene exporter converts supported Godot scene structures into a simpler platform-neutral intermediate format.
+The `.g2a` format should be:
 
-Example supported concepts:
+* open
+* documented
+* deterministic
+* human-readable during development
+* platform-independent
+* easy to validate
+* easy to inspect
 
-* Nodes
-* Transforms
-* Sprites
+The format should contain no generated source code.
+
+---
+
+## Backend Independence
+
+The `.g2a` format should not depend on:
+
+* C
+* Assembly
+* VBCC
+* GCC
+* Makefiles
+* Any specific runtime implementation
+
+Backend tools consume `.g2a` and decide how to generate native projects.
+
+---
+
+# 5. Asset Pipeline
+
+## Purpose
+
+The Asset Pipeline converts modern game assets into Amiga-friendly formats.
+
+Responsibilities include converting:
+
+* Images
+* Palettes
 * Tilemaps
+* Audio
+* Fonts
 * Animation data
-* Input mappings
-* Basic UI elements
-
-Unsupported features should fail clearly with useful error messages.
 
 ---
 
-### 4. Asset Pipeline
+## Graphics Conversion
 
-The asset pipeline converts modern assets into Amiga-friendly formats.
-
-Examples:
-
-* PNG to indexed planar graphics
-* WAV to Amiga-compatible audio
-* Fonts to bitmap fonts
-* Tilemaps to compact map data
-* Palettes to chipset-specific color tables
-
-The asset pipeline should be deterministic and reproducible.
-
----
-
-### 5. Compiler / Code Generator
-
-The compiler converts exported project data and supported scripts into native code or data structures usable by the Amiga runtime.
+Modern images must be converted to formats suitable for Amiga chipsets.
 
 Possible outputs:
 
-* C code
-* Assembly code
-* Binary data blobs
-* Header files
-* Makefiles
+* Planar bitplanes
+* Sprite data
+* Tiles
+* Palette tables
+* Copper lists
+* Blitter-friendly data
 
-Early versions may use generated C code before adding deeper script compilation.
-
----
-
-### 6. Amiga Runtime
-
-The runtime is the code that actually runs on the Amiga.
-
-Responsibilities:
-
-* Startup
-* Main loop
-* Graphics
-* Sprites
-* Tilemaps
-* Input
-* Audio
-* Timing
-* Memory management
-* File loading
-* Debug support
-
-The runtime must remain small, predictable and hardware-aware.
+The conversion depends on the selected export profile.
 
 ---
 
-### 7. SDK
+## Audio Conversion
 
-The SDK contains reusable headers, libraries, templates and build files.
+Audio assets may be converted into:
 
-Examples:
+* Paula-compatible samples
+* MOD files
+* Future music formats
+
+Audio conversion must respect memory and channel limitations.
+
+---
+
+## Fonts
+
+Fonts should be converted into bitmap fonts.
+
+Vector fonts are not expected to be used directly on the target hardware.
+
+---
+
+## Determinism
+
+Given the same input assets and profile, the Asset Pipeline should produce identical output.
+
+This is important for testing and version control.
+
+---
+
+# 6. Code Generation
+
+## Purpose
+
+The Code Generator transforms `.g2a` project data into a native Amiga project.
+
+Possible generated output:
+
+```text
+build/amiga/
+    main.c
+    game_data.c
+    game_data.h
+    assets/
+    Makefile
+    README_BUILD.txt
+```
+
+Future versions may generate assembly or mixed C/assembly.
+
+---
+
+## Responsibilities
+
+The Code Generator is responsible for:
+
+* Runtime initialization
+* Scene registration
+* Resource tables
+* Main loop glue code
+* Build files
+* Compiler configuration
+
+It should not parse Godot project files.
+
+It should not perform asset conversion directly.
+
+---
+
+## Implementation Strategy
+
+Early versions should generate simple C code.
+
+This keeps the first implementation easy to inspect and compile.
+
+Performance-critical parts can later move into the runtime or generated assembly.
+
+---
+
+# 7. Runtime Architecture
+
+## Purpose
+
+The runtime is the code that runs on the Amiga.
+
+It provides the platform-specific services required by generated games.
+
+---
+
+## Runtime Modules
+
+Planned modules:
+
+```text
+runtime/
+    startup/
+    graphics/
+    audio/
+    input/
+    memory/
+    filesystem/
+    timing/
+    debug/
+```
+
+---
+
+## Runtime Responsibilities
+
+The runtime is responsible for:
+
+* Initializing hardware
+* Opening screens
+* Managing buffers
+* Drawing sprites and tiles
+* Playing audio
+* Reading input
+* Managing timing
+* Loading data
+* Shutting down cleanly
+
+---
+
+## Runtime Principles
+
+The runtime should be:
+
+* small
+* predictable
+* hardware-aware
+* modular
+* easy to inspect
+* easy to replace where needed
+
+Runtime modules may differ by export profile.
+
+For example:
+
+* OCS runtime
+* ECS runtime
+* AGA runtime
+* RTG runtime
+
+---
+
+# 8. SDK Architecture
+
+The SDK provides reusable files required by generated projects.
+
+Example:
 
 ```text
 sdk/
-  include/
-  lib/
-  templates/
-  examples/
+    include/
+    lib/
+    templates/
+    examples/
 ```
 
-The SDK should allow generated projects to be built consistently across different development machines.
+The SDK should contain:
+
+* Headers
+* Runtime libraries
+* Linker scripts
+* Build templates
+* Example projects
+
+Generated projects should depend on the SDK rather than duplicating runtime code.
 
 ---
 
-## Target Output
+# 9. Build Toolchain
 
-The exporter should eventually produce a folder like:
+## Purpose
 
-```text
-build/amiga/
-  main.c
-  game_data.c
-  game_data.h
-  assets/
-  Makefile
-  README_BUILD.txt
-```
-
-Later targets may produce:
-
-```text
-build/amiga/game
-build/amiga/game.adf
-build/amiga/game.hdf
-```
-
----
-
-## Initial Proof of Concept
-
-The first proof of concept should be intentionally small.
-
-Goal:
-
-```text
-Press Export in Godot and generate a minimal Amiga project folder.
-```
-
-Minimum output:
-
-```text
-build/amiga/
-  main.c
-  Makefile
-  README_BUILD.txt
-```
-
-The generated `main.c` does not need to be a complete game at first. It only needs to prove that the Godot export plugin can generate a native Amiga project structure.
-
----
-
-## Design Principles
-
-Godot2Amiga should be:
-
-* Native
-* Lightweight
-* Predictable
-* Open
-* Hardware-aware
-* Friendly to contributors
-* Easy to test
-* Easy to understand
-
-The project should prefer simple working systems over clever abstractions.
-
----
-
-## Non-Goals
-
-Godot2Amiga is not intended to:
-
-* Run the full Godot Engine on Amiga hardware
-* Support every Godot feature
-* Hide all hardware limitations
-* Replace Amiga-specific optimization
-* Be an emulator
-* Be a virtual machine
-
-The goal is to provide a modern workflow for making real Amiga games.
-
----
-
-## Supported Godot Features
-
-Initial supported subset:
-
-* 2D scenes
-* Node2D-style transforms
-* Sprite-like objects
-* Tilemaps
-* Basic animation
-* Input actions
-* Simple scripts
-* Bitmap fonts
-
-Not initially supported:
-
-* 3D
-* Physics-heavy projects
-* Shaders
-* Dynamic lighting
-* Complex UI themes
-* Multiplayer
-* Full GDScript compatibility
-
----
-
-## Hardware Targets
-
-Initial target:
-
-```text
-Amiga 500 / 68000 / OCS / 1 MB RAM
-```
-
-Planned targets:
-
-```text
-Amiga 500
-Amiga 600
-Amiga 1200
-Amiga 3000
-Amiga 4000
-CD32
-RTG-equipped Amigas
-Accelerated 68020–68060 systems
-```
-
----
-
-## Build Toolchain
+The build toolchain compiles the generated native Amiga project.
 
 Potential toolchains:
 
@@ -305,93 +616,330 @@ Potential toolchains:
 * GCC / m68k-amigaos-gcc
 * VASM
 * VLINK
-* FS-UAE for testing
-* WinUAE for testing
-* Real hardware for validation
 
-The exact default toolchain should be decided after early prototypes.
+The default toolchain should be selected after early prototypes.
 
 ---
 
-## Development Phases
+## Build Flow
 
-### Phase 0: Foundation
-
-* Documentation
-* Architecture
-* Repository layout
-* Export plugin skeleton
-* Runtime skeleton
-
-### Phase 1: Export Prototype
-
-* Godot plugin loads
-* Amiga export option appears
-* Project exports to `build/amiga/`
-* Minimal C project generated
-
-### Phase 2: Runtime Prototype
-
-* Buildable Amiga executable
-* Open screen
-* Clear screen
-* Read input
-* Exit cleanly
-
-### Phase 3: First Visual Output
-
-* Convert one image
-* Display one sprite
-* Move sprite with joystick or keyboard
-
-### Phase 4: Game Prototype
-
-* Tilemap
-* Sprite animation
-* Collision basics
-* Sound effect
-* Simple demo game
-
-### Phase 5: Real Project Support
-
-* Better asset pipeline
-* Script support
-* Packaging
-* Debugging
-* Performance optimization
+```text
+project.g2a
+     |
+     v
+g2a-build
+     |
+     v
+Native Amiga Project
+     |
+     v
+Compiler Toolchain
+     |
+     v
+Executable
+```
 
 ---
 
-## Long-Term Architecture Direction
+## Packaging
 
-The architecture should keep the Amiga backend separate from the Godot-facing frontend.
+Future packaging targets may include:
 
-This makes it possible to later support other retro targets without rewriting the editor integration.
+* plain executable
+* ADF
+* HDF
+* WHDLoad package
+* release ZIP
 
-Possible future structure:
+---
+
+# 10. Export Profiles
+
+Export Profiles define the hardware assumptions used during export.
+
+Profiles affect:
+
+* validation
+* asset conversion
+* runtime selection
+* compiler flags
+* memory limits
+* packaging
+
+---
+
+## Initial Profiles
+
+Planned profiles:
+
+```text
+Amiga 500 (OCS, 68000, 1 MB Chip RAM)
+Amiga 600 (ECS)
+Amiga 1200 (AGA, 68020)
+CD32
+RTG
+```
+
+The baseline target is:
+
+```text
+Amiga 500 / OCS / 68000 / 1 MB Chip RAM
+```
+
+---
+
+# 11. Supported Godot Feature Subset
+
+Godot2Amiga will support a practical subset of Godot.
+
+Initial focus:
+
+* 2D scenes
+* Node hierarchy
+* Sprite-like objects
+* Tilemaps
+* Basic animation
+* Input actions
+* Bitmap fonts
+* Simple scripts
+
+Not initially supported:
+
+* 3D
+* Shaders
+* Dynamic lighting
+* Complex physics
+* Full GDScript compatibility
+* Advanced UI themes
+* Multiplayer
+
+Unsupported features should produce clear diagnostics.
+
+---
+
+# 12. Testing Strategy
+
+## Unit Testing
+
+Each tool should be testable independently.
+
+Examples:
+
+* Validate `.g2a` files
+* Test asset conversion
+* Test code generation
+* Test export profiles
+
+---
+
+## Integration Testing
+
+Integration tests should cover complete flows:
+
+```text
+Godot project -> project.g2a
+project.g2a -> native Amiga project
+native Amiga project -> executable
+```
+
+---
+
+## Emulator Testing
+
+Emulators are useful for automated testing.
+
+Possible tools:
+
+* FS-UAE
+* WinUAE
+
+---
+
+## Real Hardware Testing
+
+Real hardware testing is the final validation step.
+
+Target systems:
+
+* Amiga 500
+* Amiga 600
+* Amiga 1200
+* CD32
+
+---
+
+# 13. Tooling
+
+The `.g2a` format enables standalone tools.
+
+Potential tools:
+
+```text
+g2a-validate
+g2a-inspect
+g2a-build
+g2a-optimize
+g2a-package
+g2a-test
+```
+
+Each tool should have one responsibility.
+
+---
+
+## g2a-validate
+
+Validates a `.g2a` project.
+
+---
+
+## g2a-inspect
+
+Displays project summaries, memory estimates and warnings.
+
+---
+
+## g2a-build
+
+Generates a native Amiga project from `.g2a`.
+
+---
+
+## g2a-optimize
+
+Performs optional optimizations.
+
+---
+
+## g2a-package
+
+Creates distributable packages.
+
+---
+
+## g2a-test
+
+Runs generated builds in emulators or test environments.
+
+---
+
+# 14. Future Architecture
+
+The primary focus is Amiga.
+
+However, the architecture should avoid unnecessary coupling between the Godot frontend and the Amiga backend.
+
+A future structure could look like:
 
 ```text
 Godot Frontend
-     |
-     v
-Retro Export Core
-     |
-     +--> Amiga Backend
-     +--> Atari ST Backend
-     +--> MS-DOS Backend
-     +--> C64 Backend
+      |
+      v
+project.g2a
+      |
+      +--> Amiga Backend
+      +--> Atari ST Backend
+      +--> MS-DOS Backend
+      +--> Classic Macintosh Backend
 ```
 
-Godot2Amiga should remain focused on Amiga first, but the internal architecture should avoid unnecessary Amiga-only assumptions in the frontend layer.
+Additional platforms are not a current goal.
+
+The architecture should simply avoid preventing them unnecessarily.
 
 ---
 
-## Summary
+# 15. Non-Goals
 
-Godot2Amiga is a bridge between modern game development and classic Amiga hardware.
+Godot2Amiga is not intended to:
 
-Godot provides the editor experience.
+* Run the full Godot Engine on Amiga hardware
+* Export arbitrary existing Godot games without changes
+* Hide all hardware limitations
+* Replace Amiga-specific knowledge
+* Support every Godot feature
+* Act as an emulator
+* Introduce a virtual machine
 
-Godot2Amiga provides the exporter, compiler, asset pipeline and runtime.
+The goal is to provide a modern workflow for creating real native Amiga software.
 
-The Amiga runs the final native game.
+---
+
+# 16. Glossary
+
+## Godot Frontend
+
+The Godot-based editor and export integration.
+
+---
+
+## Export Plugin
+
+The plugin that integrates Godot2Amiga into Godot.
+
+---
+
+## Export Coordinator
+
+The component that orchestrates the export process.
+
+---
+
+## Project Scanner
+
+The component that reads scenes, resources and project metadata.
+
+---
+
+## Validator
+
+The component that checks whether a project is compatible with a selected target profile.
+
+---
+
+## IR Builder
+
+The component that writes the `.g2a` project.
+
+---
+
+## .g2a
+
+The Godot2Amiga project format used between the frontend and backend tools.
+
+---
+
+## Asset Pipeline
+
+The system that converts modern assets into Amiga-friendly formats.
+
+---
+
+## Code Generator
+
+The system that generates native Amiga source files and build files.
+
+---
+
+## Runtime
+
+The Amiga-side code used by generated projects.
+
+---
+
+## Export Profile
+
+A predefined hardware target configuration.
+
+---
+
+# Summary
+
+Godot2Amiga is built around a clear separation between:
+
+* Godot as the editor
+* `.g2a` as the project exchange format
+* backend tools as generators
+* the runtime as native Amiga code
+
+This architecture keeps the system understandable, testable and extensible while remaining focused on producing efficient native software for classic Amiga hardware.
