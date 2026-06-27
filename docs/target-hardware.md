@@ -4,6 +4,7 @@ Version: 1.0 (Draft)
 
 Last Updated: 2026-06-27
 
+
 This document defines the hardware platforms supported by Godot2Amiga.
 
 The project aims to generate native software for classic Amiga computers while making efficient use of each target's capabilities.
