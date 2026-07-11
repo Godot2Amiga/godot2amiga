@@ -1,0 +1,26 @@
+; Engine configuration file.
+; Minimal project used to verify that the Godot2Amiga plugin parses and loads.
+
+config_version=5
+
+[application]
+
+config/name="Godot2Amiga Hello"
+run/main_scene="res://main.tscn"
+
+[display]
+
+window/size/viewport_width=320
+window/size/viewport_height=256
+window/size/window_width_override=640
+window/size/window_height_override=512
+window/stretch/mode="canvas_items"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot2amiga/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
