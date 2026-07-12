@@ -38,6 +38,7 @@ dev = [
 ]
 
 [project.scripts]
+g2a-compile = "g2a.compile:main"
 g2a = "g2a.cli:main"
 g2a-validate = "g2a.validate:main"
 g2a-build = "g2a.build:main"

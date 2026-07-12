@@ -7,6 +7,7 @@ from pathlib import Path
 
 from g2a import __version__
 from g2a import build as build_command
+from g2a import compile as compile_command
 from g2a import convert as convert_command
 from g2a import dump as dump_command
 from g2a import pack as pack_command
@@ -42,6 +43,18 @@ def build_parser() -> argparse.ArgumentParser:
     build_parser_.add_argument("package", type=Path)
     build_parser_.add_argument("-o", "--output", type=Path, required=True)
     build_parser_.add_argument("--force", action="store_true")
+
+    compile_parser = subparsers.add_parser(
+        "compile",
+        help="Compile a generated ACE project with CMake",
+    )
+    compile_parser.add_argument("project", type=Path)
+    compile_parser.add_argument("--ace-root", type=Path, required=True)
+    compile_parser.add_argument("--toolchain-file", type=Path, required=True)
+    compile_parser.add_argument("--build-dir", type=Path)
+    compile_parser.add_argument("--jobs", type=int, default=1)
+    compile_parser.add_argument("--clean", action="store_true")
+    compile_parser.add_argument("--cmake", default="cmake")
 
     pack_parser = subparsers.add_parser(
         "pack",
@@ -79,6 +92,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.force:
             build_args.append("--force")
         return build_command.main(build_args)
+
+    if args.command == "compile":
+        compile_args = [
+            str(args.project),
+            "--ace-root",
+            str(args.ace_root),
+            "--toolchain-file",
+            str(args.toolchain_file),
+            "--jobs",
+            str(args.jobs),
+            "--cmake",
+            args.cmake,
+        ]
+        if args.build_dir is not None:
+            compile_args.extend(["--build-dir", str(args.build_dir)])
+        if args.clean:
+            compile_args.append("--clean")
+        return compile_command.main(compile_args)
 
     if args.command == "pack":
         return pack_command.main([str(args.input)])
