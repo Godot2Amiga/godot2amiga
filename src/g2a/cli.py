@@ -9,7 +9,9 @@ from g2a import __version__
 from g2a import build as build_command
 from g2a import compile as compile_command
 from g2a import convert as convert_command
+from g2a import doctor as doctor_command
 from g2a import dump as dump_command
+from g2a import env as env_command
 from g2a import pack as pack_command
 from g2a import validate as validate_command
 
@@ -27,10 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("package", type=Path)
     validate_parser.add_argument("--quiet", action="store_true")
 
-    dump_parser = subparsers.add_parser(
-        "dump",
-        help="Display a .g2a package summary",
-    )
+    dump_parser = subparsers.add_parser("dump", help="Display a .g2a package summary")
     dump_parser.add_argument("package", type=Path)
 
     build_parser_ = subparsers.add_parser(
@@ -46,13 +45,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Compile a generated ACE project with CMake",
     )
     compile_parser.add_argument("project", type=Path)
-    compile_parser.add_argument("--ace-root", type=Path, required=True)
-    compile_parser.add_argument("--toolchain-file", type=Path, required=True)
-    compile_parser.add_argument("--toolchain-path", type=Path, required=True)
+    compile_parser.add_argument("--ace-root", type=Path)
+    compile_parser.add_argument("--toolchain-file", type=Path)
+    compile_parser.add_argument("--toolchain-path", type=Path)
     compile_parser.add_argument("--build-dir", type=Path)
     compile_parser.add_argument("--jobs", type=int, default=1)
     compile_parser.add_argument("--clean", action="store_true")
     compile_parser.add_argument("--cmake", default="cmake")
+
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Check the Godot2Amiga development environment",
+    )
+    doctor_parser.add_argument("--ace-root", type=Path)
+    doctor_parser.add_argument("--toolchain-file", type=Path)
+    doctor_parser.add_argument("--toolchain-path", type=Path)
+    doctor_parser.add_argument("--cmake", default="cmake")
+
+    env_parser = subparsers.add_parser(
+        "env",
+        help="Display resolved Godot2Amiga environment settings",
+    )
+    env_parser.add_argument("--ace-root", type=Path)
+    env_parser.add_argument("--toolchain-file", type=Path)
+    env_parser.add_argument("--toolchain-path", type=Path)
 
     pack_parser = subparsers.add_parser("pack", help="Package build output")
     pack_parser.add_argument("input", type=Path)
@@ -85,24 +101,38 @@ def main(argv: list[str] | None = None) -> int:
         return build_command.main(build_args)
 
     if args.command == "compile":
-        compile_args = [
-            str(args.project),
-            "--ace-root",
-            str(args.ace_root),
-            "--toolchain-file",
-            str(args.toolchain_file),
-            "--toolchain-path",
-            str(args.toolchain_path),
-            "--jobs",
-            str(args.jobs),
-            "--cmake",
-            args.cmake,
-        ]
+        compile_args = [str(args.project), "--jobs", str(args.jobs), "--cmake", args.cmake]
+        if args.ace_root is not None:
+            compile_args.extend(["--ace-root", str(args.ace_root)])
+        if args.toolchain_file is not None:
+            compile_args.extend(["--toolchain-file", str(args.toolchain_file)])
+        if args.toolchain_path is not None:
+            compile_args.extend(["--toolchain-path", str(args.toolchain_path)])
         if args.build_dir is not None:
             compile_args.extend(["--build-dir", str(args.build_dir)])
         if args.clean:
             compile_args.append("--clean")
         return compile_command.main(compile_args)
+
+    if args.command == "doctor":
+        doctor_args = ["--cmake", args.cmake]
+        if args.ace_root is not None:
+            doctor_args.extend(["--ace-root", str(args.ace_root)])
+        if args.toolchain_file is not None:
+            doctor_args.extend(["--toolchain-file", str(args.toolchain_file)])
+        if args.toolchain_path is not None:
+            doctor_args.extend(["--toolchain-path", str(args.toolchain_path)])
+        return doctor_command.main(doctor_args)
+
+    if args.command == "env":
+        env_args: list[str] = []
+        if args.ace_root is not None:
+            env_args.extend(["--ace-root", str(args.ace_root)])
+        if args.toolchain_file is not None:
+            env_args.extend(["--toolchain-file", str(args.toolchain_file)])
+        if args.toolchain_path is not None:
+            env_args.extend(["--toolchain-path", str(args.toolchain_path)])
+        return env_command.main(env_args)
 
     if args.command == "pack":
         return pack_command.main([str(args.input)])

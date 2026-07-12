@@ -13,6 +13,7 @@ from typing import Any
 from rich.console import Console
 
 from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN
+from g2a.config import ConfigurationError, resolve_compile_configuration
 
 EXIT_OK = 0
 EXIT_INVALID_PROJECT = 1
@@ -26,9 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Configure and compile a generated Godot2Amiga ACE project.",
     )
     parser.add_argument("project", type=Path)
-    parser.add_argument("--ace-root", type=Path, required=True)
-    parser.add_argument("--toolchain-file", type=Path, required=True)
-    parser.add_argument("--toolchain-path", type=Path, required=True)
+    parser.add_argument("--ace-root", type=Path)
+    parser.add_argument("--toolchain-file", type=Path)
+    parser.add_argument("--toolchain-path", type=Path)
     parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--clean", action="store_true")
@@ -166,16 +167,12 @@ def compile_project(
 
     if validate_generated_project(project):
         return EXIT_INVALID_PROJECT
-
     if validate_ace_root(ace_root):
         return EXIT_CONFIGURATION_ERROR
-
     if not toolchain_file.is_file():
         return EXIT_CONFIGURATION_ERROR
-
     if validate_toolchain_path(toolchain_path):
         return EXIT_CONFIGURATION_ERROR
-
     if jobs < 1:
         return EXIT_CONFIGURATION_ERROR
 
@@ -237,9 +234,9 @@ def compile_project(
 def run(
     project: Path,
     *,
-    ace_root: Path,
-    toolchain_file: Path,
-    toolchain_path: Path,
+    ace_root: Path | None = None,
+    toolchain_file: Path | None = None,
+    toolchain_path: Path | None = None,
     build_dir: Path | None = None,
     jobs: int = 1,
     clean: bool = False,
@@ -248,6 +245,16 @@ def run(
 ) -> int:
     console = console or Console()
 
+    try:
+        configuration = resolve_compile_configuration(
+            ace_root=ace_root,
+            toolchain_file=toolchain_file,
+            toolchain_path=toolchain_path,
+        )
+    except ConfigurationError as exc:
+        console.print(f"[red]ERROR:[/red] {exc}")
+        return EXIT_CONFIGURATION_ERROR
+
     project_errors = validate_generated_project(project)
     if project_errors:
         console.print(f"[red]INVALID PROJECT:[/red] {project.resolve()}")
@@ -255,20 +262,20 @@ def run(
             console.print(f"  - {error}")
         return EXIT_INVALID_PROJECT
 
-    ace_errors = validate_ace_root(ace_root)
+    ace_errors = validate_ace_root(configuration.ace_root)
     if ace_errors:
-        console.print(f"[red]INVALID ACE ROOT:[/red] {ace_root.resolve()}")
+        console.print(f"[red]INVALID ACE ROOT:[/red] {configuration.ace_root}")
         for error in ace_errors:
             console.print(f"  - {error}")
         return EXIT_CONFIGURATION_ERROR
 
-    if not toolchain_file.is_file():
-        console.print(f"[red]ERROR:[/red] missing toolchain file: {toolchain_file.resolve()}")
+    if not configuration.toolchain_file.is_file():
+        console.print(f"[red]ERROR:[/red] missing toolchain file: {configuration.toolchain_file}")
         return EXIT_CONFIGURATION_ERROR
 
-    toolchain_errors = validate_toolchain_path(toolchain_path)
+    toolchain_errors = validate_toolchain_path(configuration.toolchain_path)
     if toolchain_errors:
-        console.print(f"[red]INVALID TOOLCHAIN PATH:[/red] {toolchain_path.resolve()}")
+        console.print(f"[red]INVALID TOOLCHAIN PATH:[/red] {configuration.toolchain_path}")
         for error in toolchain_errors:
             console.print(f"  - {error}")
         return EXIT_CONFIGURATION_ERROR
@@ -283,9 +290,9 @@ def run(
 
     result = compile_project(
         project,
-        ace_root=ace_root,
-        toolchain_file=toolchain_file,
-        toolchain_path=toolchain_path,
+        ace_root=configuration.ace_root,
+        toolchain_file=configuration.toolchain_file,
+        toolchain_path=configuration.toolchain_path,
         build_dir=build_dir,
         jobs=jobs,
         clean=clean,

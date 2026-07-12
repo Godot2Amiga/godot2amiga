@@ -45,6 +45,8 @@ g2a-build = "g2a.build:main"
 g2a-pack = "g2a.pack:main"
 g2a-dump = "g2a.dump:main"
 g2a-convert = "g2a.convert:main"
+g2a-doctor = "g2a.doctor:main"
+g2a-env = "g2a.env:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/g2a"]
