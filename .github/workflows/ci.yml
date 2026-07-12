@@ -19,6 +19,38 @@ jobs:
       - name: Run static repository checks
         run: ./scripts/validate-repository.sh
 
+  python-tools:
+    name: Python tools
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.5"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Lint
+        run: uv run ruff check src tests
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Validate canonical fixture
+        run: uv run g2a validate tests/fixtures/valid/minimal.g2a
+
+      - name: Dump canonical fixture
+        run: uv run g2a dump tests/fixtures/valid/minimal.g2a
+
   godot-plugin-parse:
     name: Godot plugin parse
     runs-on: ubuntu-latest

@@ -18,3 +18,10 @@ mono_crash.*.json
 
 # Local repair backups
 .repair-backup/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+__pycache__/
+*.py[cod]

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+if command -v uv >/dev/null 2>&1; then
+    exec uv run --project "${ROOT}" g2a-validate "$@"
+fi
+
+if [[ -x "${ROOT}/.venv/bin/g2a-validate" ]]; then
+    exec "${ROOT}/.venv/bin/g2a-validate" "$@"
+fi
+
+printf 'ERROR: uv or a local .venv is required.\n' >&2
+printf 'Run: uv sync --extra dev\n' >&2
+exit 2

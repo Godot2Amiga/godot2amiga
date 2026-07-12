@@ -1,8 +1,8 @@
 @tool
 extends EditorPlugin
 
-const MENU_EXPORT := "Godot2Amiga/Export ACE C skeleton"
-const DEFAULT_OUTPUT_DIRECTORY := "res://build/amiga"
+const MENU_EXPORT := "Godot2Amiga/Export project.g2a"
+const DEFAULT_OUTPUT_DIRECTORY := "res://build/amiga/project.g2a"
 
 var _generator: RefCounted
 
@@ -31,7 +31,7 @@ func _export_project() -> void:
         return
 
     print(
-        "Godot2Amiga: generated ACE C skeleton in %s"
+        "Godot2Amiga: generated %s"
         % ProjectSettings.globalize_path(DEFAULT_OUTPUT_DIRECTORY)
     )
     EditorInterface.get_resource_filesystem().scan()

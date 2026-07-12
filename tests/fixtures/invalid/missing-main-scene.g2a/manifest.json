@@ -1,0 +1,10 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/manifest.schema.json",
+  "format": "g2a",
+  "format_version": "0.1.0",
+  "generator": {
+    "name": "Godot2Amiga test fixture",
+    "version": "0.2.0",
+    "godot_version": "4.4.1"
+  }
+}

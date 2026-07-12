@@ -1,0 +1,11 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/project.schema.json",
+  "id": "minimal",
+  "name": "Minimal",
+  "main_scene": "scenes/main.json",
+  "source": {
+    "engine": "godot",
+    "project_file": "res://project.godot",
+    "main_scene": "res://main.tscn"
+  }
+}
