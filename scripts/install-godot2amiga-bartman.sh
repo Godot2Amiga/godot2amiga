@@ -236,6 +236,21 @@ fi
 
 chmod +x "$ELF2HUNK"
 
+log "Fixing executable permissions in Bartman toolchain"
+find "$TOOLCHAIN_PATH/bin" "$TOOLCHAIN_PATH/libexec" \
+  -type f \
+  -exec chmod +x {} +
+
+log "Creating unprefixed binutils compatibility links"
+for tool in as ld ar ranlib nm objcopy objdump strip; do
+  target="$TOOLCHAIN_PATH/bin/m68k-amiga-elf-$tool"
+  link="$TOOLCHAIN_PATH/bin/$tool"
+
+  if [[ -f "$target" ]]; then
+    ln -sfn "m68k-amiga-elf-$tool" "$link"
+  fi
+done
+
 TOOLCHAIN_FILE="$CMAKE_TOOLCHAINS/m68k-bartman.cmake"
 [[ -f "$TOOLCHAIN_FILE" ]] || die "Missing $TOOLCHAIN_FILE"
 [[ -f "$ACE_ROOT/CMakeLists.txt" ]] || die "ACE CMakeLists.txt is missing."
@@ -260,6 +275,25 @@ grep -Fqx "$SOURCE_LINE" "$HOME/.bashrc" || {
 }
 
 "$COMPILER" --version | head -n 1
+
+TEST_SOURCE="$(mktemp --suffix=.c)"
+TEST_OBJECT="$(mktemp --suffix=.o)"
+trap 'rm -f "$RELEASE_JSON" "$TEST_SOURCE" "$TEST_OBJECT"' EXIT
+
+cat > "$TEST_SOURCE" <<'EOF'
+int main(void) {
+    return 0;
+}
+EOF
+
+log "Running compiler smoke test"
+"$COMPILER" \
+  -m68000 \
+  -msoft-float \
+  -c "$TEST_SOURCE" \
+  -o "$TEST_OBJECT"
+
+file "$TEST_OBJECT"
 
 cat <<EOF
 
