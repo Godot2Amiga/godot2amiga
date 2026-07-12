@@ -92,9 +92,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     pack_parser = subparsers.add_parser(
         "pack",
-        help="Package build output",
+        help="Package compiled output for AmigaOS",
     )
-    pack_parser.add_argument("input", type=Path)
+    pack_parser.add_argument("project", type=Path)
+    pack_parser.add_argument("--output", type=Path)
+    pack_parser.add_argument("--force", action="store_true")
+    pack_parser.add_argument("--strip", action="store_true")
+    pack_parser.add_argument("--elf2hunk", type=Path)
 
     convert_parser = subparsers.add_parser(
         "convert",
@@ -193,7 +197,14 @@ def main(argv: list[str] | None = None) -> int:
         return env_command.main(env_args)
 
     if args.command == "pack":
-        return pack_command.main([str(args.input)])
+        pack_args = [str(args.project)]
+        _append_optional_path(pack_args, "--output", args.output)
+        if args.force:
+            pack_args.append("--force")
+        if args.strip:
+            pack_args.append("--strip")
+        _append_optional_path(pack_args, "--elf2hunk", args.elf2hunk)
+        return pack_command.main(pack_args)
 
     if args.command == "convert":
         return convert_command.main([str(args.input)])

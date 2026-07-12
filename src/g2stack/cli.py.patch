@@ -1,0 +1,41 @@
+Apply these changes to src/g2stack/cli.py:
+
+1. Add this import:
+
+    from g2stack.commands import pack as pack_command
+
+2. Add this parser before clean:
+
+    pack_parser = subparsers.add_parser(
+        "pack",
+        help="Package compiled output for AmigaOS",
+    )
+    pack_parser.add_argument(
+        "project",
+        type=Path,
+        nargs="?",
+        help="Generated project; defaults to build/minimal",
+    )
+    pack_parser.add_argument("--output", type=Path)
+    pack_parser.add_argument("--force", action="store_true")
+    pack_parser.add_argument("--strip", action="store_true")
+
+3. Add this dispatch block before clean:
+
+    if args.command == "pack":
+        project = (
+            args.project.expanduser().resolve()
+            if args.project is not None
+            else paths.build_root / "minimal"
+        )
+        output = (
+            args.output.expanduser().resolve()
+            if args.output is not None
+            else None
+        )
+        return pack_command.run(
+            project,
+            output=output,
+            force=args.force,
+            strip=args.strip,
+        )
