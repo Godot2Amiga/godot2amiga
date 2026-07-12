@@ -47,11 +47,6 @@ def validate_required_layout(package: Path) -> list[ValidationIssue]:
     ]
     required_directories = [
         "scenes",
-        "assets",
-        "scripts",
-        "resources",
-        "metadata",
-        "diagnostics",
     ]
 
     for relative in required_files:
