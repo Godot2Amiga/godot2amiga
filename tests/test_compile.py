@@ -168,3 +168,31 @@ def test_compile_returns_configure_failure(tmp_path: Path) -> None:
     assert result == 7
     assert len(runner.commands) == 1
     assert not (project / "COMPILE_INFO.json").exists()
+
+
+def test_clean_removes_existing_build_directory(tmp_path: Path) -> None:
+    project = create_generated_project(tmp_path)
+    ace_root, toolchain_file, toolchain_path = create_compile_inputs(tmp_path)
+    cmake = create_fake_cmake(tmp_path)
+
+    build_dir = tmp_path / "cmake-build"
+    build_dir.mkdir()
+
+    sentinel = build_dir / "stale.txt"
+    sentinel.write_text("stale", encoding="utf-8")
+
+    runner = FakeRunner()
+
+    result = compile_project(
+        project,
+        ace_root=ace_root,
+        toolchain_file=toolchain_file,
+        toolchain_path=toolchain_path,
+        build_dir=build_dir,
+        clean=True,
+        cmake=str(cmake),
+        runner=runner,
+    )
+
+    assert result == EXIT_OK
+    assert not sentinel.exists()
