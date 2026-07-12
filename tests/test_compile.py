@@ -39,11 +39,14 @@ def create_generated_project(tmp_path: Path) -> Path:
 
 def create_compile_inputs(tmp_path: Path) -> tuple[Path, Path]:
     ace_root = tmp_path / "ACE"
-    ace_root.mkdir()
+    (ace_root / "include" / "ace").mkdir(parents=True)
+    (ace_root / "CMakeLists.txt").write_text(
+        "add_library(ace INTERFACE)\n",
+        encoding="utf-8",
+    )
 
     toolchain = tmp_path / "amiga-toolchain.cmake"
     toolchain.write_text("# fake toolchain\n", encoding="utf-8")
-
     return ace_root, toolchain
 
 
@@ -56,7 +59,6 @@ def create_fake_cmake(tmp_path: Path) -> Path:
 
 def test_generated_project_validation(tmp_path: Path) -> None:
     project = create_generated_project(tmp_path)
-
     assert validate_generated_project(project) == []
 
 
@@ -122,7 +124,7 @@ def test_compile_runs_configure_and_build(tmp_path: Path) -> None:
 
     compile_info = json.loads((project / "COMPILE_INFO.json").read_text(encoding="utf-8"))
     assert compile_info["result"] == "success"
-    assert compile_info["jobs"] == 4
+    assert compile_info["target"] == {"cpu": "68000", "fpu": "soft"}
 
 
 def test_compile_returns_configure_failure(tmp_path: Path) -> None:

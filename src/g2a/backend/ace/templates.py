@@ -20,10 +20,10 @@ def render_main_c(project_name: str) -> str:
 
 #include "generated_project.h"
 
-#include <stdio.h>
+#include <ace/managers/log.h>
 
 int main(void) {{
-    puts("Godot2Amiga: {escaped_name}");
+    logWrite("Godot2Amiga: {escaped_name}\\n");
     return 0;
 }}
 """
@@ -62,29 +62,50 @@ def render_cmake(project_id: str) -> str:
 
 project({project_id} C)
 
+if(NOT DEFINED G2A_ACE_ROOT)
+    message(FATAL_ERROR "G2A_ACE_ROOT must point to an ACE source checkout")
+endif()
+
+if(NOT EXISTS "${{G2A_ACE_ROOT}}/CMakeLists.txt")
+    message(FATAL_ERROR "G2A_ACE_ROOT does not contain ACE CMakeLists.txt")
+endif()
+
+add_subdirectory("${{G2A_ACE_ROOT}}" "${{CMAKE_BINARY_DIR}}/ace")
+
 add_executable(${{PROJECT_NAME}}
     src/main.c
     src/generated_project.c
 )
 
 target_include_directories(${{PROJECT_NAME}} PRIVATE include)
+target_link_libraries(${{PROJECT_NAME}} PRIVATE ace)
+
+set_target_properties(${{PROJECT_NAME}} PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED YES
+    C_EXTENSIONS YES
+)
 """
 
 
 def render_makefile(project_id: str) -> str:
-    return f"""CC ?= m68k-amigaos-gcc
-CFLAGS ?= -O2 -Wall -Wextra -Iinclude
+    return f"""CMAKE ?= cmake
+BUILD_DIR ?= .g2a-build
+ACE_ROOT ?=
+TOOLCHAIN_FILE ?=
+JOBS ?= 1
 TARGET ?= {project_id}
 
-SOURCES := src/main.c src/generated_project.c
+.PHONY: configure build clean
 
-.PHONY: all clean
+configure:
+	$(CMAKE) -S . -B $(BUILD_DIR) \
+		-DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) \
+		-DG2A_ACE_ROOT=$(ACE_ROOT)
 
-all: $(TARGET)
-
-$(TARGET): $(SOURCES)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES)
+build: configure
+	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
 
 clean:
-	rm -f $(TARGET)
+	rm -rf $(BUILD_DIR)
 """

@@ -23,44 +23,13 @@ def build_parser() -> argparse.ArgumentParser:
         prog="g2a-compile",
         description="Configure and compile a generated Godot2Amiga ACE project.",
     )
-    parser.add_argument(
-        "project",
-        type=Path,
-        help="Path to a generated ACE project",
-    )
-    parser.add_argument(
-        "--ace-root",
-        type=Path,
-        required=True,
-        help="Path to the ACE source tree",
-    )
-    parser.add_argument(
-        "--toolchain-file",
-        type=Path,
-        required=True,
-        help="Path to the Amiga CMake toolchain file",
-    )
-    parser.add_argument(
-        "--build-dir",
-        type=Path,
-        help="CMake build directory; defaults to <project>/.g2a-build",
-    )
-    parser.add_argument(
-        "--jobs",
-        type=int,
-        default=1,
-        help="Number of parallel build jobs",
-    )
-    parser.add_argument(
-        "--clean",
-        action="store_true",
-        help="Delete the build directory before configuring",
-    )
-    parser.add_argument(
-        "--cmake",
-        default="cmake",
-        help="CMake executable name or path",
-    )
+    parser.add_argument("project", type=Path)
+    parser.add_argument("--ace-root", type=Path, required=True)
+    parser.add_argument("--toolchain-file", type=Path, required=True)
+    parser.add_argument("--build-dir", type=Path)
+    parser.add_argument("--jobs", type=int, default=1)
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--cmake", default="cmake")
     return parser
 
 
@@ -79,7 +48,6 @@ def _write_json(path: Path, value: Any) -> None:
 
 def validate_generated_project(project: Path) -> list[str]:
     errors: list[str] = []
-
     required_files = [
         "CMakeLists.txt",
         "BUILD_INFO.json",
@@ -110,6 +78,20 @@ def validate_generated_project(project: Path) -> list[str]:
     return errors
 
 
+def validate_ace_root(ace_root: Path) -> list[str]:
+    errors: list[str] = []
+    if not ace_root.is_dir():
+        return ["ACE root is not a directory"]
+
+    if not (ace_root / "CMakeLists.txt").is_file():
+        errors.append("ACE root does not contain CMakeLists.txt")
+
+    if not (ace_root / "include" / "ace").is_dir():
+        errors.append("ACE root does not contain include/ace")
+
+    return errors
+
+
 def resolve_cmake_executable(value: str) -> str | None:
     candidate = Path(value)
     if candidate.parent != Path(".") or candidate.is_absolute():
@@ -134,17 +116,13 @@ def build_configure_command(
         str(build_dir),
         f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
         f"-DG2A_ACE_ROOT={ace_root}",
+        "-DM68K_CPU=68000",
+        "-DM68K_FPU=soft",
     ]
 
 
 def build_compile_command(cmake: str, build_dir: Path, jobs: int) -> list[str]:
-    return [
-        cmake,
-        "--build",
-        str(build_dir),
-        "--parallel",
-        str(jobs),
-    ]
+    return [cmake, "--build", str(build_dir), "--parallel", str(jobs)]
 
 
 def compile_project(
@@ -163,17 +141,13 @@ def compile_project(
     toolchain_file = toolchain_file.resolve()
     resolved_build_dir = build_dir.resolve() if build_dir is not None else project / ".g2a-build"
 
-    project_errors = validate_generated_project(project)
-    if project_errors:
+    if validate_generated_project(project):
         return EXIT_INVALID_PROJECT
 
-    if not ace_root.is_dir():
+    if validate_ace_root(ace_root):
         return EXIT_CONFIGURATION_ERROR
 
-    if not toolchain_file.is_file():
-        return EXIT_CONFIGURATION_ERROR
-
-    if jobs < 1:
+    if not toolchain_file.is_file() or jobs < 1:
         return EXIT_CONFIGURATION_ERROR
 
     cmake_executable = resolve_cmake_executable(cmake)
@@ -197,30 +171,31 @@ def compile_project(
     if configure_result.returncode != 0:
         return configure_result.returncode or EXIT_COMPILE_FAILED
 
-    compile_command = build_compile_command(
-        cmake_executable,
-        resolved_build_dir,
-        jobs,
-    )
+    compile_command = build_compile_command(cmake_executable, resolved_build_dir, jobs)
     compile_result = runner(compile_command, check=False)
     if compile_result.returncode != 0:
         return compile_result.returncode or EXIT_COMPILE_FAILED
 
-    compile_info = {
-        "ace_root": str(ace_root),
-        "build_directory": str(resolved_build_dir),
-        "cmake": cmake_executable,
-        "commands": {
-            "configure": configure_command,
-            "build": compile_command,
+    _write_json(
+        project / "COMPILE_INFO.json",
+        {
+            "ace_root": str(ace_root),
+            "build_directory": str(resolved_build_dir),
+            "cmake": cmake_executable,
+            "commands": {
+                "configure": configure_command,
+                "build": compile_command,
+            },
+            "jobs": jobs,
+            "project": str(project),
+            "result": "success",
+            "target": {
+                "cpu": "68000",
+                "fpu": "soft",
+            },
+            "toolchain_file": str(toolchain_file),
         },
-        "jobs": jobs,
-        "project": str(project),
-        "result": "success",
-        "toolchain_file": str(toolchain_file),
-    }
-    _write_json(project / "COMPILE_INFO.json", compile_info)
-
+    )
     return EXIT_OK
 
 
@@ -239,34 +214,28 @@ def run(
 
     project_errors = validate_generated_project(project)
     if project_errors:
-        console.print(f"[red]INVALID PROJECT:[/red] {project.resolve()}", highlight=False)
+        console.print(f"[red]INVALID PROJECT:[/red] {project.resolve()}")
         for error in project_errors:
-            console.print(f"  - {error}", highlight=False)
+            console.print(f"  - {error}")
         return EXIT_INVALID_PROJECT
 
-    if not ace_root.is_dir():
-        console.print(
-            f"[red]ERROR:[/red] ACE root is not a directory: {ace_root.resolve()}",
-            highlight=False,
-        )
+    ace_errors = validate_ace_root(ace_root)
+    if ace_errors:
+        console.print(f"[red]INVALID ACE ROOT:[/red] {ace_root.resolve()}")
+        for error in ace_errors:
+            console.print(f"  - {error}")
         return EXIT_CONFIGURATION_ERROR
 
     if not toolchain_file.is_file():
-        console.print(
-            f"[red]ERROR:[/red] toolchain file does not exist: {toolchain_file.resolve()}",
-            highlight=False,
-        )
+        console.print(f"[red]ERROR:[/red] missing toolchain file: {toolchain_file.resolve()}")
         return EXIT_CONFIGURATION_ERROR
 
     if jobs < 1:
-        console.print("[red]ERROR:[/red] --jobs must be at least 1.")
+        console.print("[red]ERROR:[/red] --jobs must be at least 1")
         return EXIT_CONFIGURATION_ERROR
 
     if resolve_cmake_executable(cmake) is None:
-        console.print(
-            f"[red]ERROR:[/red] CMake executable was not found: {cmake}",
-            highlight=False,
-        )
+        console.print(f"[red]ERROR:[/red] CMake executable not found: {cmake}")
         return EXIT_CONFIGURATION_ERROR
 
     result = compile_project(
@@ -280,16 +249,9 @@ def run(
     )
 
     if result == EXIT_OK:
-        console.print(
-            f"[green]COMPILED:[/green] {project.resolve()}",
-            highlight=False,
-        )
+        console.print(f"[green]COMPILED:[/green] {project.resolve()}")
     else:
-        console.print(
-            f"[red]COMPILE FAILED:[/red] command exited with status {result}",
-            highlight=False,
-        )
-
+        console.print(f"[red]COMPILE FAILED:[/red] status {result}")
     return result
 
 
