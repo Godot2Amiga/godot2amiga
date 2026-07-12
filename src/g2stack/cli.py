@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from rich.console import Console
@@ -14,6 +15,7 @@ from g2stack.commands import compile as compile_command
 from g2stack.commands import doctor as doctor_command
 from g2stack.commands import install as install_command
 from g2stack.commands import pack as pack_command
+from g2stack.commands import run as run_command
 from g2stack.config import StackPaths, default_repository
 
 
@@ -97,6 +99,27 @@ def build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--force", action="store_true")
     pack_parser.add_argument("--strip", action="store_true")
 
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run packaged output with FS-UAE",
+    )
+    run_parser.add_argument(
+        "package",
+        type=Path,
+        nargs="?",
+        help="Package directory; defaults to build/minimal/dist",
+    )
+    run_parser.add_argument("--runtime-directory", type=Path)
+    run_parser.add_argument("--fs-uae", default="fs-uae")
+    run_parser.add_argument("--amiga-model", default="A500")
+    run_parser.add_argument(
+        "--kickstart",
+        type=Path,
+        help="Kickstart ROM; defaults to G2A_KICKSTART_ROM when set",
+    )
+    run_parser.add_argument("--force", action="store_true")
+    run_parser.add_argument("--dry-run", action="store_true")
+
     clean_parser = subparsers.add_parser(
         "clean",
         help="Remove generated build output",
@@ -177,6 +200,40 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             strip=args.strip,
         )
+
+    if args.command == "run":
+        package = (
+            args.package.expanduser().resolve()
+            if args.package is not None
+            else paths.build_root / "minimal" / "dist"
+        )
+        runtime_directory = (
+            args.runtime_directory.expanduser().resolve()
+            if args.runtime_directory is not None
+            else None
+        )
+        kickstart = args.kickstart
+        if kickstart is None:
+            environment_kickstart = os.environ.get("G2A_KICKSTART_ROM")
+            if environment_kickstart:
+                kickstart = Path(environment_kickstart)
+
+        result = run_command.run(
+            package,
+            runtime_directory=runtime_directory,
+            fs_uae=args.fs_uae,
+            amiga_model=args.amiga_model,
+            kickstart=kickstart,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
+
+        if result == 0:
+            if args.dry_run:
+                console.print("[green]RUN CONFIG READY[/green]")
+        else:
+            console.print(f"[red]RUN FAILED[/red] status {result}")
+        return result
 
     if args.command == "clean":
         result = clean_command.run(
