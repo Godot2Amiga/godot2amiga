@@ -21,9 +21,11 @@ class RunLayout:
     """Files generated for an FS-UAE run."""
 
     package_directory: Path
-    executable: Path
+    source_executable: Path
+    runtime_executable: Path
     runtime_directory: Path
     hard_drive_directory: Path
+    startup_sequence: Path
     config_file: Path
 
 
@@ -82,13 +84,18 @@ def load_package_artifact(
     return artifact, []
 
 
+def render_startup_sequence(executable_name: str) -> str:
+    """Render a valid AmigaDOS startup-sequence for the packaged program."""
+    return f"FailAt 21\nCD DH0:\n{executable_name}\nEndCLI >NIL:\n"
+
+
 def prepare_runtime_layout(
     package_directory: Path,
     *,
     runtime_directory: Path | None = None,
     force: bool = False,
 ) -> RunLayout:
-    """Create a directory hard drive and FS-UAE configuration location."""
+    """Create a bootable directory hard drive for FS-UAE."""
     package_directory = package_directory.expanduser().resolve()
     executable, errors = load_package_artifact(package_directory)
     if executable is None:
@@ -118,16 +125,18 @@ def prepare_runtime_layout(
 
     startup_sequence = startup_directory / "startup-sequence"
     startup_sequence.write_text(
-        f'DH0:"{runtime_executable.name}"\n',
+        render_startup_sequence(runtime_executable.name),
         encoding="ascii",
         newline="\n",
     )
 
     return RunLayout(
         package_directory=package_directory,
-        executable=runtime_executable,
+        source_executable=executable,
+        runtime_executable=runtime_executable,
         runtime_directory=resolved_runtime_directory,
         hard_drive_directory=hard_drive_directory,
+        startup_sequence=startup_sequence,
         config_file=resolved_runtime_directory / "g2stack.fs-uae",
     )
 

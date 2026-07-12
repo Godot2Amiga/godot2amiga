@@ -12,6 +12,7 @@ from g2stack.commands.run import (
     load_package_artifact,
     prepare_runtime_layout,
     render_fs_uae_config,
+    render_startup_sequence,
     run,
 )
 
@@ -37,17 +38,24 @@ def create_package(tmp_path: Path) -> Path:
     return package_directory
 
 
-def test_prepare_runtime_layout_creates_startup_sequence(
+def test_startup_sequence_uses_cd_then_program_name() -> None:
+    startup = render_startup_sequence("minimal")
+
+    assert startup == ("FailAt 21\nCD DH0:\nminimal\nEndCLI >NIL:\n")
+    assert 'DH0:"minimal"' not in startup
+
+
+def test_prepare_runtime_layout_creates_boot_structure(
     tmp_path: Path,
 ) -> None:
     package_directory = create_package(tmp_path)
 
     layout = prepare_runtime_layout(package_directory)
 
-    assert layout.executable.read_bytes() == b"HUNK"
-    assert (layout.hard_drive_directory / "S" / "startup-sequence").read_text(
-        encoding="ascii"
-    ) == 'DH0:"minimal"\n'
+    assert layout.runtime_executable.read_bytes() == b"HUNK"
+    assert layout.runtime_executable == (layout.hard_drive_directory / "minimal")
+    assert layout.startup_sequence == (layout.hard_drive_directory / "S" / "startup-sequence")
+    assert layout.startup_sequence.read_text(encoding="ascii") == render_startup_sequence("minimal")
 
 
 def test_render_config_mounts_directory_hard_drive(
@@ -95,7 +103,10 @@ def test_run_starts_fs_uae_with_generated_config(
 
     commands: list[list[str]] = []
 
-    def fake_runner(command: list[str], **_: Any) -> SimpleNamespace:
+    def fake_runner(
+        command: list[str],
+        **_: Any,
+    ) -> SimpleNamespace:
         commands.append(command)
         return SimpleNamespace(returncode=0)
 
