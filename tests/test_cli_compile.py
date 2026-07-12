@@ -16,7 +16,8 @@ def test_compile_subcommand_forwards_arguments(monkeypatch, tmp_path: Path) -> N
 
     project = tmp_path / "project"
     ace_root = tmp_path / "ACE"
-    toolchain = tmp_path / "toolchain.cmake"
+    toolchain_file = tmp_path / "toolchain.cmake"
+    toolchain_path = tmp_path / "toolchain"
     build_dir = tmp_path / "build"
 
     result = cli.main(
@@ -26,7 +27,9 @@ def test_compile_subcommand_forwards_arguments(monkeypatch, tmp_path: Path) -> N
             "--ace-root",
             str(ace_root),
             "--toolchain-file",
-            str(toolchain),
+            str(toolchain_file),
+            "--toolchain-path",
+            str(toolchain_path),
             "--build-dir",
             str(build_dir),
             "--jobs",
@@ -43,7 +46,9 @@ def test_compile_subcommand_forwards_arguments(monkeypatch, tmp_path: Path) -> N
         "--ace-root",
         str(ace_root),
         "--toolchain-file",
-        str(toolchain),
+        str(toolchain_file),
+        "--toolchain-path",
+        str(toolchain_path),
         "--jobs",
         "6",
         "--cmake",

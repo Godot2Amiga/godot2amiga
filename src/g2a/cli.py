@@ -23,10 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    validate_parser = subparsers.add_parser(
-        "validate",
-        help="Validate a .g2a package",
-    )
+    validate_parser = subparsers.add_parser("validate", help="Validate a .g2a package")
     validate_parser.add_argument("package", type=Path)
     validate_parser.add_argument("--quiet", action="store_true")
 
@@ -51,15 +48,13 @@ def build_parser() -> argparse.ArgumentParser:
     compile_parser.add_argument("project", type=Path)
     compile_parser.add_argument("--ace-root", type=Path, required=True)
     compile_parser.add_argument("--toolchain-file", type=Path, required=True)
+    compile_parser.add_argument("--toolchain-path", type=Path, required=True)
     compile_parser.add_argument("--build-dir", type=Path)
     compile_parser.add_argument("--jobs", type=int, default=1)
     compile_parser.add_argument("--clean", action="store_true")
     compile_parser.add_argument("--cmake", default="cmake")
 
-    pack_parser = subparsers.add_parser(
-        "pack",
-        help="Package build output",
-    )
+    pack_parser = subparsers.add_parser("pack", help="Package build output")
     pack_parser.add_argument("input", type=Path)
 
     convert_parser = subparsers.add_parser(
@@ -84,11 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         return dump_command.main([str(args.package)])
 
     if args.command == "build":
-        build_args = [
-            str(args.package),
-            "--output",
-            str(args.output),
-        ]
+        build_args = [str(args.package), "--output", str(args.output)]
         if args.force:
             build_args.append("--force")
         return build_command.main(build_args)
@@ -100,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
             str(args.ace_root),
             "--toolchain-file",
             str(args.toolchain_file),
+            "--toolchain-path",
+            str(args.toolchain_path),
             "--jobs",
             str(args.jobs),
             "--cmake",

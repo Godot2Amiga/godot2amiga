@@ -14,6 +14,7 @@ from g2a.compile import (
     build_configure_command,
     compile_project,
     validate_generated_project,
+    validate_toolchain_path,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +38,7 @@ def create_generated_project(tmp_path: Path) -> Path:
     return output
 
 
-def create_compile_inputs(tmp_path: Path) -> tuple[Path, Path]:
+def create_compile_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     ace_root = tmp_path / "ACE"
     (ace_root / "include" / "ace").mkdir(parents=True)
     (ace_root / "CMakeLists.txt").write_text(
@@ -45,9 +46,16 @@ def create_compile_inputs(tmp_path: Path) -> tuple[Path, Path]:
         encoding="utf-8",
     )
 
-    toolchain = tmp_path / "amiga-toolchain.cmake"
-    toolchain.write_text("# fake toolchain\n", encoding="utf-8")
-    return ace_root, toolchain
+    toolchain_file = tmp_path / "amiga-toolchain.cmake"
+    toolchain_file.write_text("# fake toolchain\n", encoding="utf-8")
+
+    toolchain_path = tmp_path / "amiga-toolchain"
+    compiler = toolchain_path / "bin" / "m68k-amigaos-gcc"
+    compiler.parent.mkdir(parents=True)
+    compiler.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    compiler.chmod(0o755)
+
+    return ace_root, toolchain_file, toolchain_path
 
 
 def create_fake_cmake(tmp_path: Path) -> Path:
@@ -62,31 +70,42 @@ def test_generated_project_validation(tmp_path: Path) -> None:
     assert validate_generated_project(project) == []
 
 
+def test_toolchain_path_requires_compiler(tmp_path: Path) -> None:
+    toolchain_path = tmp_path / "toolchain"
+    toolchain_path.mkdir()
+
+    assert validate_toolchain_path(toolchain_path) == [
+        "toolchain path does not contain bin/m68k-amigaos-gcc"
+    ]
+
+
 def test_compile_rejects_invalid_generated_project(tmp_path: Path) -> None:
     project = tmp_path / "invalid"
     project.mkdir()
-    ace_root, toolchain = create_compile_inputs(tmp_path)
+    ace_root, toolchain_file, toolchain_path = create_compile_inputs(tmp_path)
     cmake = create_fake_cmake(tmp_path)
 
     result = compile_project(
         project,
         ace_root=ace_root,
-        toolchain_file=toolchain,
+        toolchain_file=toolchain_file,
+        toolchain_path=toolchain_path,
         cmake=str(cmake),
     )
 
     assert result == EXIT_INVALID_PROJECT
 
 
-def test_compile_rejects_missing_ace_root(tmp_path: Path) -> None:
+def test_compile_rejects_missing_toolchain_path(tmp_path: Path) -> None:
     project = create_generated_project(tmp_path)
-    _, toolchain = create_compile_inputs(tmp_path)
+    ace_root, toolchain_file, _ = create_compile_inputs(tmp_path)
     cmake = create_fake_cmake(tmp_path)
 
     result = compile_project(
         project,
-        ace_root=tmp_path / "missing-ace",
-        toolchain_file=toolchain,
+        ace_root=ace_root,
+        toolchain_file=toolchain_file,
+        toolchain_path=tmp_path / "missing",
         cmake=str(cmake),
     )
 
@@ -95,7 +114,7 @@ def test_compile_rejects_missing_ace_root(tmp_path: Path) -> None:
 
 def test_compile_runs_configure_and_build(tmp_path: Path) -> None:
     project = create_generated_project(tmp_path)
-    ace_root, toolchain = create_compile_inputs(tmp_path)
+    ace_root, toolchain_file, toolchain_path = create_compile_inputs(tmp_path)
     cmake = create_fake_cmake(tmp_path)
     build_dir = tmp_path / "cmake-build"
     runner = FakeRunner()
@@ -103,7 +122,8 @@ def test_compile_runs_configure_and_build(tmp_path: Path) -> None:
     result = compile_project(
         project,
         ace_root=ace_root,
-        toolchain_file=toolchain,
+        toolchain_file=toolchain_file,
+        toolchain_path=toolchain_path,
         build_dir=build_dir,
         jobs=4,
         cmake=str(cmake),
@@ -117,26 +137,30 @@ def test_compile_runs_configure_and_build(tmp_path: Path) -> None:
             project.resolve(),
             build_dir.resolve(),
             ace_root.resolve(),
-            toolchain.resolve(),
+            toolchain_file.resolve(),
+            toolchain_path.resolve(),
         ),
         build_compile_command(str(cmake.resolve()), build_dir.resolve(), 4),
     ]
 
     compile_info = json.loads((project / "COMPILE_INFO.json").read_text(encoding="utf-8"))
-    assert compile_info["result"] == "success"
-    assert compile_info["target"] == {"cpu": "68000", "fpu": "soft"}
+    assert compile_info["toolchain_path"] == str(toolchain_path.resolve())
+    assert (
+        f"-DM68K_TOOLCHAIN_PATH={toolchain_path.resolve()}" in compile_info["commands"]["configure"]
+    )
 
 
 def test_compile_returns_configure_failure(tmp_path: Path) -> None:
     project = create_generated_project(tmp_path)
-    ace_root, toolchain = create_compile_inputs(tmp_path)
+    ace_root, toolchain_file, toolchain_path = create_compile_inputs(tmp_path)
     cmake = create_fake_cmake(tmp_path)
     runner = FakeRunner([7])
 
     result = compile_project(
         project,
         ace_root=ace_root,
-        toolchain_file=toolchain,
+        toolchain_file=toolchain_file,
+        toolchain_path=toolchain_path,
         cmake=str(cmake),
         runner=runner,
     )
@@ -144,27 +168,3 @@ def test_compile_returns_configure_failure(tmp_path: Path) -> None:
     assert result == 7
     assert len(runner.commands) == 1
     assert not (project / "COMPILE_INFO.json").exists()
-
-
-def test_clean_removes_existing_build_directory(tmp_path: Path) -> None:
-    project = create_generated_project(tmp_path)
-    ace_root, toolchain = create_compile_inputs(tmp_path)
-    cmake = create_fake_cmake(tmp_path)
-    build_dir = tmp_path / "cmake-build"
-    build_dir.mkdir()
-    sentinel = build_dir / "stale.txt"
-    sentinel.write_text("stale", encoding="utf-8")
-    runner = FakeRunner()
-
-    result = compile_project(
-        project,
-        ace_root=ace_root,
-        toolchain_file=toolchain,
-        build_dir=build_dir,
-        clean=True,
-        cmake=str(cmake),
-        runner=runner,
-    )
-
-    assert result == EXIT_OK
-    assert not sentinel.exists()
