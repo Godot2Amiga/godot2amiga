@@ -12,7 +12,7 @@ from typing import Any
 
 from rich.console import Console
 
-from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN
+from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN, AceToolchain
 from g2a.config import ConfigurationError, resolve_compile_configuration
 
 EXIT_OK = 0
@@ -30,6 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ace-root", type=Path)
     parser.add_argument("--toolchain-file", type=Path)
     parser.add_argument("--toolchain-path", type=Path)
+    parser.add_argument(
+        "--toolchain-profile",
+        choices=["bartman", "bebbo"],
+    )
+    parser.add_argument("--elf2hunk", type=Path)
     parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--clean", action="store_true")
@@ -96,12 +101,15 @@ def validate_ace_root(ace_root: Path) -> list[str]:
     return errors
 
 
-def validate_toolchain_path(toolchain_path: Path) -> list[str]:
+def validate_toolchain_path(
+    toolchain_path: Path,
+    toolchain: AceToolchain = DEFAULT_ACE_TOOLCHAIN,
+) -> list[str]:
     errors: list[str] = []
     if not toolchain_path.is_dir():
         return ["toolchain path is not a directory"]
 
-    compiler = DEFAULT_ACE_TOOLCHAIN.compiler_path(toolchain_path)
+    compiler = toolchain.compiler_path(toolchain_path)
     relative_compiler = compiler.relative_to(toolchain_path).as_posix()
 
     if not compiler.is_file():
@@ -128,6 +136,7 @@ def build_configure_command(
     ace_root: Path,
     toolchain_file: Path,
     toolchain_path: Path,
+    toolchain: AceToolchain = DEFAULT_ACE_TOOLCHAIN,
 ) -> list[str]:
     return [
         cmake,
@@ -137,14 +146,25 @@ def build_configure_command(
         str(build_dir),
         f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
         f"-DG2A_ACE_ROOT={ace_root}",
-        DEFAULT_ACE_TOOLCHAIN.cmake_path_argument(toolchain_path),
-        DEFAULT_ACE_TOOLCHAIN.cmake_cpu_argument(),
-        DEFAULT_ACE_TOOLCHAIN.cmake_fpu_argument(),
+        toolchain.cmake_path_argument(toolchain_path),
+        toolchain.cmake_prefix_argument(),
+        toolchain.cmake_cpu_argument(),
+        toolchain.cmake_fpu_argument(),
     ]
 
 
-def build_compile_command(cmake: str, build_dir: Path, jobs: int) -> list[str]:
-    return [cmake, "--build", str(build_dir), "--parallel", str(jobs)]
+def build_compile_command(
+    cmake: str,
+    build_dir: Path,
+    jobs: int,
+) -> list[str]:
+    return [
+        cmake,
+        "--build",
+        str(build_dir),
+        "--parallel",
+        str(jobs),
+    ]
 
 
 def compile_project(
@@ -153,6 +173,8 @@ def compile_project(
     ace_root: Path,
     toolchain_file: Path,
     toolchain_path: Path,
+    toolchain: AceToolchain = DEFAULT_ACE_TOOLCHAIN,
+    elf2hunk: Path | None = None,
     build_dir: Path | None = None,
     jobs: int = 1,
     clean: bool = False,
@@ -171,8 +193,15 @@ def compile_project(
         return EXIT_CONFIGURATION_ERROR
     if not toolchain_file.is_file():
         return EXIT_CONFIGURATION_ERROR
-    if validate_toolchain_path(toolchain_path):
+    if validate_toolchain_path(toolchain_path, toolchain):
         return EXIT_CONFIGURATION_ERROR
+
+    if toolchain.requires_elf2hunk:
+        if elf2hunk is None:
+            return EXIT_CONFIGURATION_ERROR
+        if not elf2hunk.is_file() or not os.access(elf2hunk, os.X_OK):
+            return EXIT_CONFIGURATION_ERROR
+
     if jobs < 1:
         return EXIT_CONFIGURATION_ERROR
 
@@ -193,12 +222,17 @@ def compile_project(
         ace_root,
         toolchain_file,
         toolchain_path,
+        toolchain,
     )
     configure_result = runner(configure_command, check=False)
     if configure_result.returncode != 0:
         return configure_result.returncode or EXIT_COMPILE_FAILED
 
-    compile_command = build_compile_command(cmake_executable, resolved_build_dir, jobs)
+    compile_command = build_compile_command(
+        cmake_executable,
+        resolved_build_dir,
+        jobs,
+    )
     compile_result = runner(compile_command, check=False)
     if compile_result.returncode != 0:
         return compile_result.returncode or EXIT_COMPILE_FAILED
@@ -213,16 +247,18 @@ def compile_project(
                 "configure": configure_command,
                 "build": compile_command,
             },
+            "elf2hunk": str(elf2hunk) if elf2hunk else None,
             "jobs": jobs,
             "project": str(project),
             "result": "success",
             "target": {
-                "cpu": DEFAULT_ACE_TOOLCHAIN.default_cpu,
-                "fpu": DEFAULT_ACE_TOOLCHAIN.default_fpu,
+                "cpu": toolchain.default_cpu,
+                "fpu": toolchain.default_fpu,
             },
+            "toolchain_profile": toolchain.name,
             "toolchain": {
-                "cmake_path_variable": DEFAULT_ACE_TOOLCHAIN.cmake_path_variable,
-                "compiler_prefix": DEFAULT_ACE_TOOLCHAIN.compiler_prefix,
+                "cmake_path_variable": toolchain.cmake_path_variable,
+                "compiler_prefix": toolchain.compiler_prefix,
             },
             "toolchain_file": str(toolchain_file),
             "toolchain_path": str(toolchain_path),
@@ -237,6 +273,8 @@ def run(
     ace_root: Path | None = None,
     toolchain_file: Path | None = None,
     toolchain_path: Path | None = None,
+    toolchain_profile: str | None = None,
+    elf2hunk: Path | None = None,
     build_dir: Path | None = None,
     jobs: int = 1,
     clean: bool = False,
@@ -250,6 +288,8 @@ def run(
             ace_root=ace_root,
             toolchain_file=toolchain_file,
             toolchain_path=toolchain_path,
+            toolchain_profile=toolchain_profile,
+            elf2hunk=elf2hunk,
         )
     except ConfigurationError as exc:
         console.print(f"[red]ERROR:[/red] {exc}")
@@ -262,37 +302,13 @@ def run(
             console.print(f"  - {error}")
         return EXIT_INVALID_PROJECT
 
-    ace_errors = validate_ace_root(configuration.ace_root)
-    if ace_errors:
-        console.print(f"[red]INVALID ACE ROOT:[/red] {configuration.ace_root}")
-        for error in ace_errors:
-            console.print(f"  - {error}")
-        return EXIT_CONFIGURATION_ERROR
-
-    if not configuration.toolchain_file.is_file():
-        console.print(f"[red]ERROR:[/red] missing toolchain file: {configuration.toolchain_file}")
-        return EXIT_CONFIGURATION_ERROR
-
-    toolchain_errors = validate_toolchain_path(configuration.toolchain_path)
-    if toolchain_errors:
-        console.print(f"[red]INVALID TOOLCHAIN PATH:[/red] {configuration.toolchain_path}")
-        for error in toolchain_errors:
-            console.print(f"  - {error}")
-        return EXIT_CONFIGURATION_ERROR
-
-    if jobs < 1:
-        console.print("[red]ERROR:[/red] --jobs must be at least 1")
-        return EXIT_CONFIGURATION_ERROR
-
-    if resolve_cmake_executable(cmake) is None:
-        console.print(f"[red]ERROR:[/red] CMake executable not found: {cmake}")
-        return EXIT_CONFIGURATION_ERROR
-
     result = compile_project(
         project,
         ace_root=configuration.ace_root,
         toolchain_file=configuration.toolchain_file,
         toolchain_path=configuration.toolchain_path,
+        toolchain=configuration.toolchain,
+        elf2hunk=configuration.elf2hunk,
         build_dir=build_dir,
         jobs=jobs,
         clean=clean,
@@ -313,6 +329,8 @@ def main(argv: list[str] | None = None) -> int:
         ace_root=args.ace_root,
         toolchain_file=args.toolchain_file,
         toolchain_path=args.toolchain_path,
+        toolchain_profile=args.toolchain_profile,
+        elf2hunk=args.elf2hunk,
         build_dir=args.build_dir,
         jobs=args.jobs,
         clean=args.clean,
