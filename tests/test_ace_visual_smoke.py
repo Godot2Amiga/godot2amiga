@@ -13,10 +13,11 @@ def test_visual_smoke_test_uses_current_ace_view_api() -> None:
     assert "simpleBufferCreate(" in source
     assert "TAG_SIMPLEBUFFER_BITMAP_FLAGS" in source
     assert "BMF_CLEAR" in source
-    assert "pViewport->pPalette[0] = 0x000F;" in source
+    assert "pViewport->pPalette[0] = 0x0008;" in source
+    assert "pViewport->pPalette[1] = 0x0008;" in source
     assert "viewLoad(pView);" in source
     assert "keyCheck(KEY_ESCAPE)" in source
-    assert "keyProcess();" in source
+    assert "keyCheck(KEY_SPACE)" in source
     assert "vPortWaitForEnd(pViewport);" in source
     assert "viewDestroy(pView);" in source
     assert "systemDestroy();" in source
