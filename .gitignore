@@ -28,3 +28,6 @@ __pycache__/
 
 # Generated build output
 build/
+
+# Temporary delivery notes
+DELIVERY.md
