@@ -1,0 +1,25 @@
+{
+  "backend": "ace",
+  "format": "g2a",
+  "format_version": "0.1.0",
+  "generator": {
+    "name": "g2a-build",
+    "version": "0.2.0"
+  },
+  "project": {
+    "id": "minimal",
+    "main_scene": "scenes/main.json",
+    "name": "Minimal"
+  },
+  "target": {
+    "$schema": "https://godot2amiga.org/schemas/g2a/export-profile.schema.json",
+    "chip_ram_kib": 512,
+    "chipset": "OCS",
+    "cpu": "68000",
+    "fast_ram_kib": 0,
+    "id": "amiga500-ocs-pal",
+    "machine": "Amiga 500",
+    "runtime": "ACE",
+    "video_standard": "PAL"
+  }
+}

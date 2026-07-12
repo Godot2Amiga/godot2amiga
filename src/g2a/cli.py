@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from g2a import __version__
 from g2a import build as build_command
@@ -25,32 +26,34 @@ def build_parser() -> argparse.ArgumentParser:
         "validate",
         help="Validate a .g2a package",
     )
-    validate_parser.add_argument("package")
+    validate_parser.add_argument("package", type=Path)
     validate_parser.add_argument("--quiet", action="store_true")
 
     dump_parser = subparsers.add_parser(
         "dump",
         help="Display a .g2a package summary",
     )
-    dump_parser.add_argument("package")
+    dump_parser.add_argument("package", type=Path)
 
     build_parser_ = subparsers.add_parser(
         "build",
-        help="Build a .g2a package",
+        help="Generate an ACE-oriented C project",
     )
-    build_parser_.add_argument("package")
+    build_parser_.add_argument("package", type=Path)
+    build_parser_.add_argument("-o", "--output", type=Path, required=True)
+    build_parser_.add_argument("--force", action="store_true")
 
     pack_parser = subparsers.add_parser(
         "pack",
         help="Package build output",
     )
-    pack_parser.add_argument("input")
+    pack_parser.add_argument("input", type=Path)
 
     convert_parser = subparsers.add_parser(
         "convert",
         help="Convert project or asset data",
     )
-    convert_parser.add_argument("input")
+    convert_parser.add_argument("input", type=Path)
 
     return parser
 
@@ -59,22 +62,29 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if args.command == "validate":
-        validate_args = [args.package]
+        validate_args = [str(args.package)]
         if args.quiet:
             validate_args.append("--quiet")
         return validate_command.main(validate_args)
 
     if args.command == "dump":
-        return dump_command.main([args.package])
+        return dump_command.main([str(args.package)])
 
     if args.command == "build":
-        return build_command.main([args.package])
+        build_args = [
+            str(args.package),
+            "--output",
+            str(args.output),
+        ]
+        if args.force:
+            build_args.append("--force")
+        return build_command.main(build_args)
 
     if args.command == "pack":
-        return pack_command.main([args.input])
+        return pack_command.main([str(args.input)])
 
     if args.command == "convert":
-        return convert_command.main([args.input])
+        return convert_command.main([str(args.input)])
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
