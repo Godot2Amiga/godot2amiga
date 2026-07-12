@@ -14,11 +14,18 @@ def test_generated_cmake_links_ace() -> None:
     assert 'message(FATAL_ERROR "G2A_ACE_ROOT must point to an ACE source checkout")' in cmake
 
 
-def test_generated_main_uses_ace_logging() -> None:
+def test_generated_main_uses_visual_ace_runtime() -> None:
     main_c = render_main_c("Minimal")
 
-    assert "#include <ace/managers/log.h>" in main_c
-    assert 'logWrite("Godot2Amiga: Minimal\\n");' in main_c
+    assert "#include <ace/managers/key.h>" in main_c
+    assert "#include <ace/managers/system.h>" in main_c
+    assert "#include <ace/managers/viewport/simplebuffer.h>" in main_c
+    assert "systemCreate();" in main_c
+    assert "viewCreate(" in main_c
+    assert "vPortCreate(" in main_c
+    assert "simpleBufferCreate(" in main_c
+    assert "viewLoad(pView);" in main_c
+    assert "while (!keyCheck(KEY_ESCAPE))" in main_c
 
 
 def test_validate_ace_root_requires_expected_layout(tmp_path: Path) -> None:
