@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "palettes": [
+    {
+      "id": "main",
+      "source": "assets/main.gpl",
+      "output": "palettes/main.plt",
+      "convert_colors": false
+    }
+  ],
+  "bitmaps": [
+    {
+      "id": "logo",
+      "source": "assets/logo.png",
+      "output": "bitmaps/logo.bm",
+      "palette": "main",
+      "interleaved": false
+    }
+  ]
+}
