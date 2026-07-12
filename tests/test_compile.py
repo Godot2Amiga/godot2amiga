@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN
 from g2a.build import generate_project
 from g2a.compile import (
     EXIT_CONFIGURATION_ERROR,
@@ -50,7 +51,7 @@ def create_compile_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     toolchain_file.write_text("# fake toolchain\n", encoding="utf-8")
 
     toolchain_path = tmp_path / "amiga-toolchain"
-    compiler = toolchain_path / "bin" / "m68k-amigaos-gcc"
+    compiler = DEFAULT_ACE_TOOLCHAIN.compiler_path(toolchain_path)
     compiler.parent.mkdir(parents=True)
     compiler.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     compiler.chmod(0o755)
@@ -145,9 +146,11 @@ def test_compile_runs_configure_and_build(tmp_path: Path) -> None:
 
     compile_info = json.loads((project / "COMPILE_INFO.json").read_text(encoding="utf-8"))
     assert compile_info["toolchain_path"] == str(toolchain_path.resolve())
-    assert (
-        f"-DM68K_TOOLCHAIN_PATH={toolchain_path.resolve()}" in compile_info["commands"]["configure"]
-    )
+    assert f"-DTOOLCHAIN_PATH={toolchain_path.resolve()}" in compile_info["commands"]["configure"]
+    assert compile_info["toolchain"] == {
+        "cmake_path_variable": "TOOLCHAIN_PATH",
+        "compiler_prefix": "m68k-amigaos",
+    }
 
 
 def test_compile_returns_configure_failure(tmp_path: Path) -> None:

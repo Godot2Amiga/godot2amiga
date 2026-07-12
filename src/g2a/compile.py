@@ -12,6 +12,8 @@ from typing import Any
 
 from rich.console import Console
 
+from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN
+
 EXIT_OK = 0
 EXIT_INVALID_PROJECT = 1
 EXIT_CONFIGURATION_ERROR = 2
@@ -98,11 +100,13 @@ def validate_toolchain_path(toolchain_path: Path) -> list[str]:
     if not toolchain_path.is_dir():
         return ["toolchain path is not a directory"]
 
-    compiler = toolchain_path / "bin" / "m68k-amigaos-gcc"
+    compiler = DEFAULT_ACE_TOOLCHAIN.compiler_path(toolchain_path)
+    relative_compiler = compiler.relative_to(toolchain_path).as_posix()
+
     if not compiler.is_file():
-        errors.append("toolchain path does not contain bin/m68k-amigaos-gcc")
+        errors.append(f"toolchain path does not contain {relative_compiler}")
     elif not os.access(compiler, os.X_OK):
-        errors.append("bin/m68k-amigaos-gcc is not executable")
+        errors.append(f"{relative_compiler} is not executable")
 
     return errors
 
@@ -132,9 +136,9 @@ def build_configure_command(
         str(build_dir),
         f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
         f"-DG2A_ACE_ROOT={ace_root}",
-        f"-DM68K_TOOLCHAIN_PATH={toolchain_path}",
-        "-DM68K_CPU=68000",
-        "-DM68K_FPU=soft",
+        DEFAULT_ACE_TOOLCHAIN.cmake_path_argument(toolchain_path),
+        DEFAULT_ACE_TOOLCHAIN.cmake_cpu_argument(),
+        DEFAULT_ACE_TOOLCHAIN.cmake_fpu_argument(),
     ]
 
 
@@ -216,8 +220,12 @@ def compile_project(
             "project": str(project),
             "result": "success",
             "target": {
-                "cpu": "68000",
-                "fpu": "soft",
+                "cpu": DEFAULT_ACE_TOOLCHAIN.default_cpu,
+                "fpu": DEFAULT_ACE_TOOLCHAIN.default_fpu,
+            },
+            "toolchain": {
+                "cmake_path_variable": DEFAULT_ACE_TOOLCHAIN.cmake_path_variable,
+                "compiler_prefix": DEFAULT_ACE_TOOLCHAIN.compiler_prefix,
             },
             "toolchain_file": str(toolchain_file),
             "toolchain_path": str(toolchain_path),
