@@ -61,7 +61,8 @@ def resolve_compile_configuration(
     environment: Mapping[str, str] | None = None,
 ) -> CompileConfiguration:
     """Resolve compile configuration using CLI values before environment values."""
-    environment = environment or os.environ
+    if environment is None:
+        environment = os.environ
 
     profile_name = (
         toolchain_profile or environment.get(ENV_TOOLCHAIN_PROFILE) or DEFAULT_ACE_TOOLCHAIN.name
