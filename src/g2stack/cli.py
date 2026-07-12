@@ -12,6 +12,7 @@ from g2stack import __version__
 from g2stack.commands import build as build_command
 from g2stack.commands import clean as clean_command
 from g2stack.commands import compile as compile_command
+from g2stack.commands import dev as dev_command
 from g2stack.commands import doctor as doctor_command
 from g2stack.commands import install as install_command
 from g2stack.commands import pack as pack_command
@@ -120,6 +121,37 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--force", action="store_true")
     run_parser.add_argument("--dry-run", action="store_true")
 
+    dev_parser = subparsers.add_parser(
+        "dev",
+        help="Build, compile, package, and run a .g2a project",
+    )
+    dev_parser.add_argument("package", type=Path)
+    dev_parser.add_argument(
+        "--output",
+        type=Path,
+        help="Generated project directory; defaults to build/<package-name>",
+    )
+    dev_parser.add_argument("--jobs", type=int, default=1)
+    dev_parser.add_argument("--force", action="store_true")
+    dev_parser.add_argument("--clean", action="store_true")
+    dev_parser.add_argument("--no-run", action="store_true")
+    dev_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Prepare FS-UAE runtime files without launching the emulator",
+    )
+    dev_parser.add_argument(
+        "--toolchain-profile",
+        choices=["bartman", "bebbo"],
+    )
+    dev_parser.add_argument("--fs-uae", default="fs-uae")
+    dev_parser.add_argument("--amiga-model", default="A500")
+    dev_parser.add_argument(
+        "--kickstart",
+        type=Path,
+        help="Kickstart ROM; defaults to G2A_KICKSTART_ROM when set",
+    )
+
     clean_parser = subparsers.add_parser(
         "clean",
         help="Remove generated build output",
@@ -138,6 +170,17 @@ def _default_build_output(package: Path, build_root: Path) -> Path:
     if name.endswith(".g2a"):
         name = name[:-4]
     return build_root / name
+
+
+def _resolve_kickstart(value: Path | None) -> Path | None:
+    if value is not None:
+        return value
+
+    environment_value = os.environ.get("G2A_KICKSTART_ROM")
+    if environment_value:
+        return Path(environment_value)
+
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -212,28 +255,40 @@ def main(argv: list[str] | None = None) -> int:
             if args.runtime_directory is not None
             else None
         )
-        kickstart = args.kickstart
-        if kickstart is None:
-            environment_kickstart = os.environ.get("G2A_KICKSTART_ROM")
-            if environment_kickstart:
-                kickstart = Path(environment_kickstart)
-
         result = run_command.run(
             package,
             runtime_directory=runtime_directory,
             fs_uae=args.fs_uae,
             amiga_model=args.amiga_model,
-            kickstart=kickstart,
+            kickstart=_resolve_kickstart(args.kickstart),
             force=args.force,
             dry_run=args.dry_run,
         )
 
-        if result == 0:
-            if args.dry_run:
-                console.print("[green]RUN CONFIG READY[/green]")
-        else:
+        if result == 0 and args.dry_run:
+            console.print("[green]RUN CONFIG READY[/green]")
+        elif result != 0:
             console.print(f"[red]RUN FAILED[/red] status {result}")
         return result
+
+    if args.command == "dev":
+        package = args.package.expanduser().resolve()
+        output = args.output.expanduser().resolve() if args.output is not None else None
+        return dev_command.run(
+            package,
+            build_root=paths.build_root,
+            output=output,
+            jobs=args.jobs,
+            force=args.force,
+            clean=args.clean,
+            no_run=args.no_run,
+            dry_run=args.dry_run,
+            toolchain_profile=args.toolchain_profile,
+            kickstart=_resolve_kickstart(args.kickstart),
+            fs_uae=args.fs_uae,
+            amiga_model=args.amiga_model,
+            console=console,
+        )
 
     if args.command == "clean":
         result = clean_command.run(
