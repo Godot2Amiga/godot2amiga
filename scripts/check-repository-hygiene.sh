@@ -10,7 +10,7 @@ fail() {
 
 found=0
 
-for pattern in '*.patch' '*.before-*' '*.orig' '*.rej'; do
+for pattern in '*.patch' '*.before-*' '*.orig' '*.rej' '*.bak'; do
     while IFS= read -r path; do
         printf 'Forbidden scratch file: %s\n' "${path#./}" >&2
         found=1
