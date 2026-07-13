@@ -18,8 +18,6 @@ EXIT_RUN_FAILED = 3
 
 @dataclass(frozen=True)
 class RunLayout:
-    """Files generated for an FS-UAE run."""
-
     package_directory: Path
     source_executable: Path
     runtime_executable: Path
@@ -35,21 +33,17 @@ def _load_json(path: Path) -> Any:
 
 
 def resolve_fs_uae_executable(value: str) -> str | None:
-    """Resolve an FS-UAE executable name or explicit path."""
     candidate = Path(value).expanduser()
-
     if candidate.is_absolute() or candidate.parent != Path("."):
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate.resolve())
         return None
-
     return shutil.which(value)
 
 
 def load_package_artifact(
     package_directory: Path,
 ) -> tuple[Path | None, list[str]]:
-    """Resolve and validate the packaged Amiga executable."""
     package_directory = package_directory.expanduser().resolve()
     package_info_path = package_directory / "PACKAGE_INFO.json"
 
@@ -65,7 +59,6 @@ def load_package_artifact(
 
     if not isinstance(package_info, dict):
         return None, ["PACKAGE_INFO.json must contain a JSON object"]
-
     if package_info.get("result") != "success":
         return None, ["PACKAGE_INFO.json does not describe a successful package"]
 
@@ -85,8 +78,9 @@ def load_package_artifact(
 
 
 def render_startup_sequence(executable_name: str) -> str:
-    """Render a valid AmigaDOS startup-sequence for the packaged program."""
-    return f"FailAt 21\nCD DH0:\n{executable_name}\nEndCLI >NIL:\n"
+    if not executable_name or "/" in executable_name or ":" in executable_name:
+        raise ValueError("invalid packaged executable name")
+    return f"DH0:{executable_name}\n"
 
 
 def prepare_runtime_layout(
@@ -95,7 +89,6 @@ def prepare_runtime_layout(
     runtime_directory: Path | None = None,
     force: bool = False,
 ) -> RunLayout:
-    """Create a bootable directory hard drive for FS-UAE."""
     package_directory = package_directory.expanduser().resolve()
     executable, errors = load_package_artifact(package_directory)
     if executable is None:
@@ -123,6 +116,15 @@ def prepare_runtime_layout(
     shutil.copy2(executable, runtime_executable)
     runtime_executable.chmod(runtime_executable.stat().st_mode | 0o111)
 
+    data_source = package_directory / "data"
+    if data_source.exists():
+        if not data_source.is_dir():
+            raise ValueError(f"runtime data path is not a directory: {data_source}")
+        shutil.copytree(
+            data_source,
+            hard_drive_directory / "data",
+        )
+
     startup_sequence = startup_directory / "startup-sequence"
     startup_sequence.write_text(
         render_startup_sequence(runtime_executable.name),
@@ -147,7 +149,6 @@ def render_fs_uae_config(
     amiga_model: str = "A500",
     kickstart: Path | None = None,
 ) -> str:
-    """Render an FS-UAE configuration for a directory hard drive."""
     lines = [
         "[fs-uae]",
         f"amiga_model = {amiga_model}",
@@ -156,10 +157,8 @@ def render_fs_uae_config(
         "hard_drive_0_priority = 10",
         "hard_drive_0_read_only = 0",
     ]
-
     if kickstart is not None:
         lines.append(f"kickstart_file = {kickstart.expanduser().resolve()}")
-
     return "\n".join(lines) + "\n"
 
 
@@ -181,7 +180,6 @@ def run(
     dry_run: bool = False,
     runner: Any = subprocess.run,
 ) -> int:
-    """Prepare and optionally start an FS-UAE development run."""
     fs_uae_executable = resolve_fs_uae_executable(fs_uae)
     if fs_uae_executable is None and not dry_run:
         return EXIT_CONFIGURATION_ERROR
@@ -213,12 +211,13 @@ def run(
     if dry_run:
         return EXIT_OK
 
-    command = build_run_command(
-        fs_uae_executable or fs_uae,
-        layout.config_file,
+    result = runner(
+        build_run_command(
+            fs_uae_executable or fs_uae,
+            layout.config_file,
+        ),
+        check=False,
     )
-    result = runner(command, check=False)
     if result.returncode != 0:
         return result.returncode or EXIT_RUN_FAILED
-
     return EXIT_OK

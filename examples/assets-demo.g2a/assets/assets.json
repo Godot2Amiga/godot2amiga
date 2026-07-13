@@ -14,7 +14,14 @@
       "source": "assets/logo.png",
       "output": "bitmaps/logo.bm",
       "palette": "main",
-      "interleaved": false
+      "interleaved": true
     }
-  ]
+  ],
+  "runtime_demo": {
+    "palette": "main",
+    "bitmap": "logo",
+    "bpp": 2,
+    "x": 152,
+    "y": 120
+  }
 }

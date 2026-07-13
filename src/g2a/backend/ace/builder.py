@@ -9,6 +9,10 @@ from typing import Any
 
 from g2a.backend.ace.config import AceBuildConfig
 from g2a.backend.ace.metadata import build_identity
+from g2a.backend.ace.runtime_assets import (
+    load_runtime_asset_demo,
+    render_runtime_asset_main_c,
+)
 from g2a.backend.ace.templates import (
     render_cmake,
     render_generated_header,
@@ -61,7 +65,13 @@ def generate_ace_project(config: AceBuildConfig) -> int:
     identity = build_identity(project_id, project_name)
     output_path = config.resolved_output_path
 
-    _write_text(output_path / "src" / "main.c", render_main_c(project_name))
+    runtime_demo = load_runtime_asset_demo(config.resolved_package_path)
+    main_source = (
+        render_runtime_asset_main_c(runtime_demo)
+        if runtime_demo is not None
+        else render_main_c(project_name)
+    )
+    _write_text(output_path / "src" / "main.c", main_source)
     _write_text(
         output_path / "src" / "generated_project.c",
         render_generated_source(),
