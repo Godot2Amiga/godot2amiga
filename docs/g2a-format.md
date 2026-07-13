@@ -4,7 +4,7 @@
 
 > **Implementation status**
 >
-> The JSON schemas under `schemas/g2a/` are authoritative whenever prose and
+> The packaged JSON schemas under `src/g2a/schemas/` are authoritative whenever prose and
 > schema differ. A valid package requires `manifest.json`, `project.json`,
 > `export_profile.json`, and the `scenes/` directory. Other directories are
 > optional. Circular scene-reference validation is not implemented.
