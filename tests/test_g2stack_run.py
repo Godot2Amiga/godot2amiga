@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from g2stack.commands.run import (
     EXIT_CONFIGURATION_ERROR,
     EXIT_OK,
@@ -158,3 +160,18 @@ def test_load_package_rejects_missing_metadata(
     artifact, errors = load_package_artifact(tmp_path)
     assert artifact is None
     assert errors == ["missing PACKAGE_INFO.json"]
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "data/minimal",
+        "DH0:minimal",
+        "",
+    ],
+)
+def test_startup_sequence_rejects_invalid_executable_name(
+    name: str,
+) -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        render_startup_sequence(name)
