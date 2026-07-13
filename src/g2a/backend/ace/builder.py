@@ -9,10 +9,10 @@ from typing import Any
 
 from g2a.backend.ace.config import AceBuildConfig
 from g2a.backend.ace.metadata import build_identity
-from g2a.backend.ace.runtime_assets import (
-    render_runtime_asset_main_c,
+from g2a.backend.ace.runtime_scene import load_runtime_scene
+from g2a.backend.ace.runtime_scene_codegen import (
+    render_runtime_scene_main_c,
 )
-from g2a.backend.ace.scene_sprite import load_scene_sprite_demo
 from g2a.backend.ace.templates import (
     render_cmake,
     render_generated_header,
@@ -41,6 +41,7 @@ def _prepare_output(config: AceBuildConfig) -> int:
     if output_path.exists():
         if not config.force:
             return EXIT_OUTPUT_EXISTS
+
         if output_path.is_dir():
             shutil.rmtree(output_path)
         else:
@@ -50,6 +51,7 @@ def _prepare_output(config: AceBuildConfig) -> int:
     (output_path / "assets").mkdir()
     (output_path / "include").mkdir()
     (output_path / "src").mkdir()
+
     return EXIT_OK
 
 
@@ -65,13 +67,17 @@ def generate_ace_project(config: AceBuildConfig) -> int:
     identity = build_identity(project_id, project_name)
     output_path = config.resolved_output_path
 
-    runtime_demo = load_scene_sprite_demo(config.resolved_package_path)
-    main_source = (
-        render_runtime_asset_main_c(runtime_demo)
-        if runtime_demo is not None
-        else render_main_c(project_name)
+    runtime_scene = load_runtime_scene(config.resolved_package_path)
+
+    if runtime_scene.sprites:
+        main_source = render_runtime_scene_main_c(runtime_scene)
+    else:
+        main_source = render_main_c(project_name)
+
+    _write_text(
+        output_path / "src" / "main.c",
+        main_source,
     )
-    _write_text(output_path / "src" / "main.c", main_source)
     _write_text(
         output_path / "src" / "generated_project.c",
         render_generated_source(),
@@ -108,6 +114,10 @@ def generate_ace_project(config: AceBuildConfig) -> int:
         },
         "target": package.export_profile,
     }
-    _write_text(output_path / "BUILD_INFO.json", _json_text(build_info))
+
+    _write_text(
+        output_path / "BUILD_INFO.json",
+        _json_text(build_info),
+    )
 
     return EXIT_OK

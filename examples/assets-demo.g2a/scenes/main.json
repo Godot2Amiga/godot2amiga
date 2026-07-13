@@ -9,14 +9,42 @@
     "parent": null,
     "children": [
       {
-        "id": "logo",
-        "name": "Logo",
+        "id": "logo-left",
+        "name": "LogoLeft",
+        "type": "Sprite2D",
+        "parent": "main",
+        "properties": {
+          "texture": "logo",
+          "position": {
+            "x": 72,
+            "y": 120
+          }
+        },
+        "children": []
+      },
+      {
+        "id": "logo-center",
+        "name": "LogoCenter",
         "type": "Sprite2D",
         "parent": "main",
         "properties": {
           "texture": "logo",
           "position": {
             "x": 152,
+            "y": 120
+          }
+        },
+        "children": []
+      },
+      {
+        "id": "logo-right",
+        "name": "LogoRight",
+        "type": "Sprite2D",
+        "parent": "main",
+        "properties": {
+          "texture": "logo",
+          "position": {
+            "x": 232,
             "y": 120
           }
         },
