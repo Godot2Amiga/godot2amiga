@@ -1,5 +1,19 @@
 # Godot2Amiga Project Format (.g2a)
 
+<!-- M6.0.1 implementation alignment -->
+
+> **Implementation status**
+>
+> The JSON schemas under `schemas/g2a/` are authoritative whenever prose and
+> schema differ. A valid package requires `manifest.json`, `project.json`,
+> `export_profile.json`, and the `scenes/` directory. Other directories are
+> optional. Circular scene-reference validation is not implemented.
+>
+> Shipped tools: `g2a-validate`, `g2a-build`, `g2a-assets`, `g2a-compile`,
+> `g2a-pack`, `g2a-dump`, `g2a-convert`, `g2a-doctor`, `g2a-env`, and
+> `g2stack`.
+
+
 **Version:** 1.0 (Draft)
 
 Last Updated: 2026-06-27
@@ -357,11 +371,11 @@ Godot Export Plugin
         ▼
 project.g2a
         │
-        ├── g2a-inspect
+        ├── g2a-dump
         ├── g2a-validate
-        ├── g2a-optimize
+        ├── g2a-convert
         ├── g2a-build
-        └── g2a-package
+        └── g2a-pack
 ```
 
 Each tool has a single responsibility.

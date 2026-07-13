@@ -435,9 +435,9 @@ Examples include:
 
 * g2a-build
 * g2a-validate
-* g2a-inspect
-* g2a-optimize
-* g2a-package
+* g2a-dump
+* g2a-convert
+* g2a-pack
 * g2a-test
 
 ---
@@ -1006,10 +1006,10 @@ Everything from this point onward operates solely on the `.g2a` project.
 This separation is one of the defining architectural principles of Godot2Amiga and enables standalone tools such as:
 
 * `g2a-build`
-* `g2a-inspect`
+* `g2a-dump`
 * `g2a-validate`
-* `g2a-optimize`
-* `g2a-package`
+* `g2a-convert`
+* `g2a-pack`
 * `g2a-test`
 
 without requiring access to Godot itself.
@@ -1868,7 +1868,7 @@ Validates a `.g2a` project.
 
 ---
 
-## g2a-inspect
+## g2a-dump
 
 Displays project summaries, diagnostics and estimated resource usage.
 
@@ -1880,7 +1880,7 @@ Generates a native Amiga project from a `.g2a` project.
 
 ---
 
-## g2a-optimize
+## g2a-convert
 
 Performs optional optimizations such as:
 
@@ -1890,7 +1890,7 @@ Performs optional optimizations such as:
 
 ---
 
-## g2a-package
+## g2a-pack
 
 Creates distributable packages.
 
@@ -2032,7 +2032,7 @@ A hardware definition describing the target platform.
 Related documentation:
 
 * README.md
-* docs/roadmap.md
+* docs/spec/roadmap.md
 * docs/g2a-format.md
 * docs/target-hardware.md
 * docs/non-goals.md

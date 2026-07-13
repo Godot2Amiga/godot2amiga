@@ -135,7 +135,7 @@ Define and stabilize the `.g2a` project format.
 ### Standalone Tools
 
 * g2a-validate
-* g2a-inspect
+* g2a-dump
 
 ### Success Criteria
 
@@ -295,8 +295,8 @@ Complete the standalone toolchain.
 
 ### Deliverables
 
-* g2a-optimize
-* g2a-package
+* g2a-convert
+* g2a-pack
 * g2a-test
 
 ### Success Criteria
