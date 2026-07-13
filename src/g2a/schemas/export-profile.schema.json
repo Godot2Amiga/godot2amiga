@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://godot2amiga.org/schemas/g2a/export-profile.schema.json",
+  "title": "Godot2Amiga export profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "machine",
+    "chipset",
+    "cpu",
+    "video_standard",
+    "chip_ram_kib",
+    "fast_ram_kib",
+    "runtime"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "machine": { "type": "string", "minLength": 1 },
+    "chipset": { "enum": ["OCS", "ECS", "AGA"] },
+    "cpu": { "enum": ["68000", "68010", "68020", "68030", "68040", "68060"] },
+    "video_standard": { "enum": ["PAL", "NTSC"] },
+    "chip_ram_kib": { "type": "integer", "minimum": 256 },
+    "fast_ram_kib": { "type": "integer", "minimum": 0 },
+    "runtime": { "enum": ["ACE"] }
+  }
+}

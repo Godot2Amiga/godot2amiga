@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import json
 from functools import cache
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
+
+
+def packaged_schema_directory():
+    """Return the installed g2a schema directory."""
+    return files("g2a.schemas")
 
 
 def repository_root() -> Path:
@@ -21,7 +27,7 @@ def repository_root() -> Path:
 
 
 def schema_directory() -> Path:
-    return repository_root() / "schemas" / "g2a"
+    return packaged_schema_directory()
 
 
 @cache

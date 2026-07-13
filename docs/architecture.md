@@ -1870,9 +1870,12 @@ Validates a `.g2a` project.
 
 ## g2a-dump
 
-Displays project summaries, diagnostics and estimated resource usage.
+`g2a-dump` reads a validated `.g2a` package and displays normalized
+package metadata for inspection and debugging.
 
----
+The current output includes project name, format version, scene count, target,
+chipset, and runtime. It does not estimate memory, performance, or hardware
+resource usage.
 
 ## g2a-build
 
@@ -1882,27 +1885,30 @@ Generates a native Amiga project from a `.g2a` project.
 
 ## g2a-convert
 
-Performs optional optimizations such as:
+`g2a-convert` is reserved for converting external project or asset
+data into Godot2Amiga-compatible input.
 
-* Palette optimization
-* Asset deduplication
-* Resource optimization
-
----
+The command currently exists as a not-implemented placeholder. Palette
+optimization, asset deduplication, and resource optimization are not current
+features.
 
 ## g2a-pack
 
-Creates distributable packages.
+`g2a-pack` resolves the compiled artifact from build metadata,
+optionally strips Bartman ELF output, converts ELF to an Amiga HUNK executable
+when required, and creates a runtime package directory.
 
-Possible outputs include:
+Current output:
 
-* Executable
-* ADF
-* HDF
-* WHDLoad package
-* ZIP archive
+```text
+dist/
+├── <executable>
+├── PACKAGE_INFO.json
+└── data/
+```
 
----
+ADF, HDF, WHDLoad, and ZIP outputs are planned possibilities, not current
+features.
 
 ## g2a-test
 
