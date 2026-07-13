@@ -1,0 +1,11 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/export-profile.schema.json",
+  "id": "amiga500-ocs-pal",
+  "machine": "Amiga 500",
+  "chipset": "OCS",
+  "cpu": "68000",
+  "video_standard": "PAL",
+  "chip_ram_kib": 512,
+  "fast_ram_kib": 0,
+  "runtime": "ACE"
+}

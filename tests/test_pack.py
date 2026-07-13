@@ -10,37 +10,8 @@ from g2a.pack import (
     EXIT_OK,
     EXIT_OUTPUT_EXISTS,
     build_elf2hunk_command,
-    build_strip_command,
     package_project,
 )
-
-
-def write_compile_info(
-    project: Path,
-    *,
-    build_directory: Path,
-    profile: str,
-    compiler_prefix: str,
-    toolchain_path: Path | None = None,
-) -> None:
-    (project / "COMPILE_INFO.json").write_text(
-        json.dumps(
-            {
-                "build_directory": str(build_directory),
-                "result": "success",
-                "toolchain_profile": profile,
-                "toolchain_path": (str(toolchain_path) if toolchain_path is not None else None),
-                "toolchain": {
-                    "compiler_prefix": compiler_prefix,
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
-    (project / "BUILD_INFO.json").write_text(
-        json.dumps({"project_id": "minimal"}),
-        encoding="utf-8",
-    )
 
 
 def write_m68k_elf(path: Path) -> None:
@@ -52,14 +23,58 @@ def write_m68k_elf(path: Path) -> None:
     path.write_bytes(header + b"payload")
 
 
+def write_build_info(
+    project: Path,
+    *,
+    project_id: str = "minimal",
+    project_name: str = "Minimal",
+    artifact_name: str = "minimal",
+) -> None:
+    (project / "BUILD_INFO.json").write_text(
+        json.dumps(
+            {
+                "project": {
+                    "id": project_id,
+                    "name": project_name,
+                },
+                "build": {
+                    "cmake_target": artifact_name,
+                    "artifact_name": artifact_name,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_compile_info(
+    project: Path,
+    *,
+    build_directory: Path,
+    profile: str = "bartman",
+    compiler_prefix: str = "m68k-amiga-elf",
+    toolchain_path: Path | None = None,
+) -> None:
+    value: dict[str, Any] = {
+        "build_directory": str(build_directory),
+        "result": "success",
+        "toolchain_profile": profile,
+        "toolchain": {
+            "compiler_prefix": compiler_prefix,
+        },
+    }
+    if toolchain_path is not None:
+        value["toolchain_path"] = str(toolchain_path)
+
+    (project / "COMPILE_INFO.json").write_text(
+        json.dumps(value),
+        encoding="utf-8",
+    )
+
+
 class FakeRunner:
-    def __init__(
-        self,
-        destination: Path,
-        returncode: int = 0,
-    ) -> None:
+    def __init__(self, destination: Path) -> None:
         self.destination = destination
-        self.returncode = returncode
         self.commands: list[list[str]] = []
 
     def __call__(
@@ -68,65 +83,46 @@ class FakeRunner:
         **_: Any,
     ) -> SimpleNamespace:
         self.commands.append(command)
-
-        if self.returncode == 0 and command[0].endswith("elf2hunk"):
+        if command[0].endswith("elf2hunk"):
+            self.destination.parent.mkdir(parents=True, exist_ok=True)
             self.destination.write_bytes(b"HUNK")
+        return SimpleNamespace(returncode=0)
 
-        return SimpleNamespace(returncode=self.returncode)
 
-
-def test_build_elf2hunk_command_uses_input_and_output(
-    tmp_path: Path,
-) -> None:
-    command = build_elf2hunk_command(
-        tmp_path / "elf2hunk",
-        tmp_path / "input.elf",
-        tmp_path / "output",
-    )
-
-    assert command == [
-        str(tmp_path / "elf2hunk"),
-        str(tmp_path / "input.elf"),
-        str(tmp_path / "output"),
+def test_build_elf2hunk_command() -> None:
+    assert build_elf2hunk_command(
+        Path("/tool/elf2hunk"),
+        Path("/tmp/input.elf"),
+        Path("/tmp/output"),
+    ) == [
+        "/tool/elf2hunk",
+        "/tmp/input.elf",
+        "/tmp/output",
     ]
 
 
-def test_build_strip_command_uses_cross_strip_tool(
-    tmp_path: Path,
-) -> None:
-    command = build_strip_command(
-        tmp_path / "m68k-amiga-elf-strip",
-        tmp_path / "input.elf",
+def test_pack_requires_build_info(tmp_path: Path) -> None:
+    project = tmp_path / "minimal"
+    project.mkdir()
+    write_compile_info(
+        project,
+        build_directory=project / ".g2a-build",
     )
 
-    assert command == [
-        str(tmp_path / "m68k-amiga-elf-strip"),
-        str(tmp_path / "input.elf"),
-    ]
+    assert package_project(project) == EXIT_INVALID_PROJECT
 
 
-def test_bartman_package_runs_strip_then_elf2hunk(
-    tmp_path: Path,
-) -> None:
+def test_bartman_package_runs_elf2hunk(tmp_path: Path) -> None:
     project = tmp_path / "minimal"
     build_directory = project / ".g2a-build"
     build_directory.mkdir(parents=True)
-
     artifact = build_directory / "minimal"
     write_m68k_elf(artifact)
 
-    toolchain_path = tmp_path / "toolchain"
-    strip_tool = toolchain_path / "bin" / "m68k-amiga-elf-strip"
-    strip_tool.parent.mkdir(parents=True)
-    strip_tool.write_text("#!/bin/sh\n", encoding="utf-8")
-    strip_tool.chmod(0o755)
-
+    write_build_info(project)
     write_compile_info(
         project,
         build_directory=build_directory,
-        profile="bartman",
-        compiler_prefix="m68k-amiga-elf",
-        toolchain_path=toolchain_path,
     )
 
     elf2hunk = tmp_path / "elf2hunk"
@@ -134,47 +130,27 @@ def test_bartman_package_runs_strip_then_elf2hunk(
     elf2hunk.chmod(0o755)
 
     destination = project / "dist" / "minimal"
-    temporary_elf = project / "dist" / "minimal.elf"
     runner = FakeRunner(destination)
 
     result = package_project(
         project,
         elf2hunk=elf2hunk,
-        strip=True,
         runner=runner,
     )
 
     assert result == EXIT_OK
-    assert runner.commands == [
-        [
-            str(strip_tool),
-            str(temporary_elf),
-        ],
-        [
-            str(elf2hunk.resolve()),
-            str(temporary_elf),
-            str(destination),
-        ],
-    ]
-
     assert destination.read_bytes() == b"HUNK"
-    assert not temporary_elf.exists()
-
-    package_info = json.loads((project / "dist" / "PACKAGE_INFO.json").read_text(encoding="utf-8"))
-    assert package_info["toolchain_profile"] == "bartman"
-    assert package_info["strip"] is True
+    assert runner.commands == [[str(elf2hunk), str(artifact), str(destination)]]
 
 
-def test_bebbo_package_copies_hunk_output(
-    tmp_path: Path,
-) -> None:
+def test_bebbo_package_copies_hunk_output(tmp_path: Path) -> None:
     project = tmp_path / "minimal"
     build_directory = project / ".g2a-build"
     build_directory.mkdir(parents=True)
-
     artifact = build_directory / "minimal"
     artifact.write_bytes(b"HUNK")
 
+    write_build_info(project)
     write_compile_info(
         project,
         build_directory=build_directory,
@@ -194,10 +170,9 @@ def test_pack_refuses_existing_output_without_force(
     project = tmp_path / "minimal"
     build_directory = project / ".g2a-build"
     build_directory.mkdir(parents=True)
+    (build_directory / "minimal").write_bytes(b"HUNK")
 
-    artifact = build_directory / "minimal"
-    artifact.write_bytes(b"HUNK")
-
+    write_build_info(project)
     write_compile_info(
         project,
         build_directory=build_directory,
@@ -212,33 +187,23 @@ def test_pack_refuses_existing_output_without_force(
     assert package_project(project) == EXIT_OUTPUT_EXISTS
 
 
-def test_pack_rejects_bartman_non_elf_artifact(
+def test_pack_uses_metadata_not_output_directory_name(
     tmp_path: Path,
 ) -> None:
-    project = tmp_path / "minimal"
+    project = tmp_path / "assets-demo"
     build_directory = project / ".g2a-build"
     build_directory.mkdir(parents=True)
-
     artifact = build_directory / "minimal"
-    artifact.write_bytes(b"not elf")
+    artifact.write_bytes(b"HUNK")
 
-    toolchain_path = tmp_path / "toolchain"
+    write_build_info(project, artifact_name="minimal")
     write_compile_info(
         project,
         build_directory=build_directory,
-        profile="bartman",
-        compiler_prefix="m68k-amiga-elf",
-        toolchain_path=toolchain_path,
+        profile="bebbo",
+        compiler_prefix="m68k-amigaos",
     )
 
-    elf2hunk = tmp_path / "elf2hunk"
-    elf2hunk.write_text("#!/bin/sh\n", encoding="utf-8")
-    elf2hunk.chmod(0o755)
-
-    assert (
-        package_project(
-            project,
-            elf2hunk=elf2hunk,
-        )
-        == EXIT_INVALID_PROJECT
-    )
+    assert package_project(project) == EXIT_OK
+    assert (project / "dist" / "minimal").is_file()
+    assert not (project / "dist" / "assets-demo").exists()

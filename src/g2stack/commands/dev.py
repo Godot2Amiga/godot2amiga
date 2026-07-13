@@ -8,6 +8,7 @@ from pathlib import Path
 
 from rich.console import Console
 
+from g2stack.commands import assets as assets_command
 from g2stack.commands import build as build_command
 from g2stack.commands import compile as compile_command
 from g2stack.commands import pack as pack_command
@@ -19,21 +20,13 @@ EXIT_CONFIGURATION_ERROR = 2
 
 @dataclass(frozen=True)
 class DevResult:
-    """Result metadata for a g2stack development workflow."""
-
     status: int
     completed_steps: tuple[str, ...]
     failed_step: str | None = None
 
 
-def default_output_for_package(
-    package: Path,
-    build_root: Path,
-) -> Path:
-    """Return build/<package-name> for a .g2a package."""
-    name = package.name
-    if name.endswith(".g2a"):
-        name = name[:-4]
+def default_output_for_package(package: Path, build_root: Path) -> Path:
+    name = package.name[:-4] if package.name.endswith(".g2a") else package.name
     return build_root / name
 
 
@@ -46,11 +39,9 @@ def _run_step(
 ) -> int:
     console.print(f"[bold cyan][g2stack] {name}[/bold cyan]")
     status = callback()
-
     if status != EXIT_OK:
         console.print(f"[bold red][g2stack] {name} FAILED: status {status}[/bold red]")
         return status
-
     completed.append(name)
     console.print(f"[green][g2stack] {name} OK[/green]")
     return EXIT_OK
@@ -70,11 +61,10 @@ def run_workflow(
     kickstart: Path | None = None,
     fs_uae: str = "fs-uae",
     amiga_model: str = "A500",
+    ace_root: Path | None = None,
     console: Console | None = None,
 ) -> DevResult:
-    """Run build, compile, pack, and optionally FS-UAE in order."""
     console = console or Console()
-
     package = package.expanduser().resolve()
     build_root = build_root.expanduser().resolve()
     project = (
@@ -85,26 +75,36 @@ def run_workflow(
 
     if jobs < 1:
         console.print("[red][g2stack] --jobs must be at least 1[/red]")
-        return DevResult(
-            status=EXIT_CONFIGURATION_ERROR,
-            completed_steps=(),
-            failed_step="CONFIGURATION",
-        )
+        return DevResult(EXIT_CONFIGURATION_ERROR, (), "CONFIGURATION")
 
     completed: list[str] = []
 
     status = _run_step(
         "BUILD",
-        lambda: build_command.run(
-            package,
-            project,
-            force=force,
-        ),
+        lambda: build_command.run(package, project, force=force),
         console=console,
         completed=completed,
     )
-    if status != EXIT_OK:
+    if status:
         return DevResult(status, tuple(completed), "BUILD")
+
+    asset_result = assets_command.convert_for_project(
+        package,
+        project,
+        ace_root=ace_root,
+        force=force,
+    )
+    if asset_result.present:
+        status = _run_step(
+            "ASSETS",
+            lambda: asset_result.status,
+            console=console,
+            completed=completed,
+        )
+        if status:
+            return DevResult(status, tuple(completed), "ASSETS")
+    else:
+        console.print("[yellow][g2stack] ASSETS SKIPPED (no assets/assets.json)[/yellow]")
 
     status = _run_step(
         "COMPILE",
@@ -117,32 +117,39 @@ def run_workflow(
         console=console,
         completed=completed,
     )
-    if status != EXIT_OK:
+    if status:
         return DevResult(status, tuple(completed), "COMPILE")
 
     status = _run_step(
         "PACK",
-        lambda: pack_command.run(
-            project,
-            force=force,
-            strip=False,
-        ),
+        lambda: pack_command.run(project, force=force, strip=False),
         console=console,
         completed=completed,
     )
-    if status != EXIT_OK:
+    if status:
         return DevResult(status, tuple(completed), "PACK")
+
+    if asset_result.present:
+        status = _run_step(
+            "INSTALL ASSETS",
+            lambda: assets_command.install_runtime_assets(
+                project,
+                generated_directory=asset_result.generated_directory,
+            ),
+            console=console,
+            completed=completed,
+        )
+        if status:
+            return DevResult(status, tuple(completed), "INSTALL ASSETS")
 
     if no_run:
         console.print("[yellow][g2stack] RUN SKIPPED (--no-run)[/yellow]")
         return DevResult(EXIT_OK, tuple(completed))
 
-    package_directory = project / "dist"
-
     status = _run_step(
         "RUN",
         lambda: run_command.run(
-            package_directory,
+            project / "dist",
             fs_uae=fs_uae,
             amiga_model=amiga_model,
             kickstart=kickstart,
@@ -152,9 +159,8 @@ def run_workflow(
         console=console,
         completed=completed,
     )
-    if status != EXIT_OK:
+    if status:
         return DevResult(status, tuple(completed), "RUN")
-
     return DevResult(EXIT_OK, tuple(completed))
 
 
@@ -172,10 +178,10 @@ def run(
     kickstart: Path | None = None,
     fs_uae: str = "fs-uae",
     amiga_model: str = "A500",
+    ace_root: Path | None = None,
     console: Console | None = None,
 ) -> int:
-    """Run the workflow and return a process-style status code."""
-    result = run_workflow(
+    return run_workflow(
         package,
         build_root=build_root,
         output=output,
@@ -188,6 +194,6 @@ def run(
         kickstart=kickstart,
         fs_uae=fs_uae,
         amiga_model=amiga_model,
+        ace_root=ace_root,
         console=console,
-    )
-    return result.status
+    ).status

@@ -39,7 +39,9 @@ def test_build_rejects_invalid_package(tmp_path: Path) -> None:
     assert not output.exists()
 
 
-def test_build_refuses_existing_output_without_force(tmp_path: Path) -> None:
+def test_build_refuses_existing_output_without_force(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "build"
     output.mkdir()
     sentinel = output / "keep.txt"
@@ -51,7 +53,9 @@ def test_build_refuses_existing_output_without_force(tmp_path: Path) -> None:
     assert sentinel.read_text(encoding="utf-8") == "keep"
 
 
-def test_build_force_replaces_existing_output(tmp_path: Path) -> None:
+def test_build_force_replaces_existing_output(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "build"
     output.mkdir()
     sentinel = output / "remove.txt"
@@ -81,7 +85,9 @@ def test_build_is_deterministic(tmp_path: Path) -> None:
     assert first_files == second_files
 
 
-def test_build_info_contains_project_metadata(tmp_path: Path) -> None:
+def test_build_info_contains_project_and_build_metadata(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "build"
 
     assert generate_project(VALID_PACKAGE, output) == EXIT_OK
@@ -90,4 +96,20 @@ def test_build_info_contains_project_metadata(tmp_path: Path) -> None:
     assert build_info["project"]["id"] == "minimal"
     assert build_info["project"]["name"] == "Minimal"
     assert build_info["project"]["main_scene"] == "scenes/main.json"
+    assert build_info["build"] == {
+        "artifact_name": "minimal",
+        "cmake_target": "minimal",
+    }
     assert build_info["backend"] == "ace"
+
+
+def test_generated_cmake_uses_metadata_target(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "build"
+    assert generate_project(VALID_PACKAGE, output) == EXIT_OK
+
+    cmake = (output / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert "project(minimal C)" in cmake
+    assert "add_executable(${PROJECT_NAME}" in cmake
+    assert "target_link_libraries(${PROJECT_NAME} PRIVATE ace)" in cmake

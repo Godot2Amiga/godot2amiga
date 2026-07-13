@@ -1,0 +1,12 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/scene.schema.json",
+  "id": "main",
+  "source": "res://main.tscn",
+  "root": {
+    "id": "main",
+    "name": "Main",
+    "type": "Node2D",
+    "parent": null,
+    "children": []
+  }
+}

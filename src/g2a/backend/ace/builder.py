@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from g2a.backend.ace.config import AceBuildConfig
+from g2a.backend.ace.metadata import build_identity
 from g2a.backend.ace.templates import (
     render_cmake,
     render_generated_header,
@@ -57,6 +58,7 @@ def generate_ace_project(config: AceBuildConfig) -> int:
     package = load_package(config.resolved_package_path)
     project_name = package.project.name
     project_id = package.project.project_id
+    identity = build_identity(project_id, project_name)
     output_path = config.resolved_output_path
 
     _write_text(output_path / "src" / "main.c", render_main_c(project_name))
@@ -68,11 +70,21 @@ def generate_ace_project(config: AceBuildConfig) -> int:
         output_path / "include" / "generated_project.h",
         render_generated_header(project_name, project_id),
     )
-    _write_text(output_path / "CMakeLists.txt", render_cmake(project_id))
-    _write_text(output_path / "Makefile", render_makefile(project_id))
+    _write_text(
+        output_path / "CMakeLists.txt",
+        render_cmake(identity.cmake_target),
+    )
+    _write_text(
+        output_path / "Makefile",
+        render_makefile(identity.cmake_target),
+    )
 
     build_info = {
         "backend": "ace",
+        "build": {
+            "artifact_name": identity.artifact_name,
+            "cmake_target": identity.cmake_target,
+        },
         "format": package.manifest.format,
         "format_version": package.manifest.format_version,
         "generator": {

@@ -12,6 +12,10 @@ from typing import Any
 
 from rich.console import Console
 
+from g2a.backend.ace.metadata import (
+    AceBuildIdentity,
+    identity_from_build_info,
+)
 from g2a.backend.ace.toolchain import get_toolchain
 from g2a.config import ConfigurationError, resolve_compile_configuration
 
@@ -48,9 +52,39 @@ def _write_json(path: Path, value: Any) -> None:
     )
 
 
-def validate_compile_info(project: Path) -> tuple[dict[str, Any] | None, list[str]]:
-    errors: list[str] = []
+def load_build_identity(
+    project: Path,
+) -> tuple[AceBuildIdentity | None, list[str]]:
+    """Load the mandatory BUILD_INFO identity contract."""
+    path = project / "BUILD_INFO.json"
+
+    if not path.is_file():
+        return None, ["missing BUILD_INFO.json"]
+
+    try:
+        value = _load_json(path)
+    except json.JSONDecodeError as exc:
+        return None, [
+            f"BUILD_INFO.json is invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        ]
+
+    if not isinstance(value, dict):
+        return None, ["BUILD_INFO.json must contain a JSON object"]
+
+    try:
+        identity = identity_from_build_info(value)
+    except ValueError as exc:
+        return None, [str(exc)]
+
+    return identity, []
+
+
+def validate_compile_info(
+    project: Path,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Load and validate compile-stage metadata."""
     path = project / "COMPILE_INFO.json"
+    errors: list[str] = []
 
     if not path.is_file():
         return None, ["missing COMPILE_INFO.json"]
@@ -94,57 +128,20 @@ def validate_compile_info(project: Path) -> tuple[dict[str, Any] | None, list[st
     return value, errors
 
 
-def _project_name(project: Path) -> str:
-    build_info_path = project / "BUILD_INFO.json"
-    if build_info_path.is_file():
-        try:
-            build_info = _load_json(build_info_path)
-        except json.JSONDecodeError:
-            build_info = {}
-
-        if isinstance(build_info, dict):
-            for key in ("project_id", "project_name", "name", "target"):
-                value = build_info.get(key)
-                if isinstance(value, str) and value:
-                    return value
-
-    return project.name
-
-
-def find_compiled_artifact(
+def resolve_compiled_artifact(
     project: Path,
     compile_info: dict[str, Any],
-) -> Path | None:
+    identity: AceBuildIdentity,
+) -> Path:
+    """Resolve exactly the artifact named by BUILD_INFO.json."""
     build_directory = Path(str(compile_info["build_directory"])).expanduser()
+
     if not build_directory.is_absolute():
         build_directory = (project / build_directory).resolve()
+    else:
+        build_directory = build_directory.resolve()
 
-    name = _project_name(project)
-    candidates = [
-        build_directory / name,
-        build_directory / f"{name}.elf",
-    ]
-
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-
-    matches = sorted(
-        path
-        for path in build_directory.rglob("*")
-        if path.is_file()
-        and path.name not in {"CMakeCache.txt", "Makefile"}
-        and not path.name.endswith((".o", ".obj", ".a", ".cmake", ".json", ".txt", ".log", ".d"))
-    )
-
-    if len(matches) == 1:
-        return matches[0]
-
-    executable_matches = [path for path in matches if os.access(path, os.X_OK)]
-    if len(executable_matches) == 1:
-        return executable_matches[0]
-
-    return None
+    return build_directory / identity.artifact_name
 
 
 def is_m68k_elf(path: Path) -> bool:
@@ -223,20 +220,28 @@ def package_project(
     elf2hunk: Path | None = None,
     runner: Any = subprocess.run,
 ) -> int:
+    """Create the runtime package from explicit build metadata."""
     project = project.expanduser().resolve()
-    compile_info, errors = validate_compile_info(project)
-    if errors or compile_info is None:
+
+    identity, identity_errors = load_build_identity(project)
+    compile_info, compile_errors = validate_compile_info(project)
+
+    if identity is None or compile_info is None or identity_errors or compile_errors:
         return EXIT_INVALID_PROJECT
 
     profile_name = str(compile_info["resolved_toolchain_profile"])
     toolchain = get_toolchain(profile_name)
 
-    artifact = find_compiled_artifact(project, compile_info)
-    if artifact is None:
+    artifact = resolve_compiled_artifact(
+        project,
+        compile_info,
+        identity,
+    )
+    if not artifact.is_file():
         return EXIT_INVALID_PROJECT
 
     output_directory = output.expanduser().resolve() if output is not None else project / "dist"
-    destination = output_directory / _project_name(project)
+    destination = output_directory / identity.artifact_name
 
     if output_directory.exists():
         if not force:
@@ -247,7 +252,6 @@ def package_project(
             output_directory.unlink()
 
     output_directory.mkdir(parents=True)
-
     commands: list[list[str]] = []
 
     if toolchain.requires_elf2hunk:
@@ -269,7 +273,7 @@ def package_project(
             return EXIT_CONFIGURATION_ERROR
 
         conversion_source = artifact
-        temporary_elf = output_directory / f"{destination.name}.elf"
+        temporary_elf = output_directory / f"{identity.artifact_name}.elf"
 
         if strip:
             if strip_tool is None or not strip_tool.is_file() or not os.access(strip_tool, os.X_OK):
@@ -277,7 +281,10 @@ def package_project(
                 return EXIT_CONFIGURATION_ERROR
 
             shutil.copy2(artifact, temporary_elf)
-            strip_command = build_strip_command(strip_tool, temporary_elf)
+            strip_command = build_strip_command(
+                strip_tool,
+                temporary_elf,
+            )
             commands.append(strip_command)
 
             strip_result = runner(strip_command, check=False)
@@ -287,14 +294,14 @@ def package_project(
 
             conversion_source = temporary_elf
 
-        elf2hunk_command = build_elf2hunk_command(
+        conversion_command = build_elf2hunk_command(
             resolved_elf2hunk,
             conversion_source,
             destination,
         )
-        commands.append(elf2hunk_command)
+        commands.append(conversion_command)
 
-        conversion_result = runner(elf2hunk_command, check=False)
+        conversion_result = runner(conversion_command, check=False)
         if conversion_result.returncode != 0:
             shutil.rmtree(output_directory)
             return conversion_result.returncode or EXIT_PACK_FAILED
@@ -314,8 +321,16 @@ def package_project(
         output_directory / "PACKAGE_INFO.json",
         {
             "artifact": str(destination),
+            "build": {
+                "artifact_name": identity.artifact_name,
+                "cmake_target": identity.cmake_target,
+            },
             "commands": commands,
-            "project": str(project),
+            "project": {
+                "id": identity.project_id,
+                "name": identity.project_name,
+                "path": str(project),
+            },
             "result": "success",
             "source_artifact": str(artifact),
             "strip": strip,

@@ -50,10 +50,10 @@ const char *g2a_project_id(void) {
 """
 
 
-def render_cmake(project_id: str) -> str:
+def render_cmake(cmake_target: str) -> str:
     return f"""cmake_minimum_required(VERSION 3.20)
 
-project({project_id} C)
+project({cmake_target} C)
 
 if(NOT DEFINED G2A_ACE_ROOT)
     message(FATAL_ERROR "G2A_ACE_ROOT must point to an ACE source checkout")
@@ -81,24 +81,24 @@ set_target_properties(${{PROJECT_NAME}} PROPERTIES
 """
 
 
-def render_makefile(project_id: str) -> str:
+def render_makefile(cmake_target: str) -> str:
     return f"""CMAKE ?= cmake
 BUILD_DIR ?= .g2a-build
 ACE_ROOT ?=
 TOOLCHAIN_FILE ?=
 JOBS ?= 1
-TARGET ?= {project_id}
+TARGET ?= {cmake_target}
 
 .PHONY: configure build clean
 
 configure:
-	$(CMAKE) -S . -B $(BUILD_DIR) \
-		-DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) \
-		-DG2A_ACE_ROOT=$(ACE_ROOT)
+\t$(CMAKE) -S . -B $(BUILD_DIR) \\
+\t\t-DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) \\
+\t\t-DG2A_ACE_ROOT=$(ACE_ROOT)
 
 build: configure
-	$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
+\t$(CMAKE) --build $(BUILD_DIR) --parallel $(JOBS)
 
 clean:
-	rm -rf $(BUILD_DIR)
+\trm -rf $(BUILD_DIR)
 """
