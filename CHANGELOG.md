@@ -27,16 +27,16 @@ and this project follows **Semantic Versioning** for releases.
 
 First complete end-to-end alpha release.
 
-This release establishes the complete Godot2Amiga development pipeline from
-`.g2a` package to executable Amiga application.
+This release establishes the first complete development pipeline from a `.g2a`
+package to a native Amiga executable.
 
 ### Added
 
 #### Package format
 
 - `.g2a` package specification
-- Package validator
 - JSON schema validation
+- Package validator
 - Project metadata
 - Export profiles
 
@@ -54,33 +54,34 @@ This release establishes the complete Godot2Amiga development pipeline from
 - GPL palette conversion
 - PNG bitmap conversion
 - Asset metadata generation
-- Asset installation into runtime package
+- Asset installation into runtime packages
 
 #### Compilation
 
 - Bartman GCC toolchain support
 - Bebbo toolchain compatibility
 - CMake integration
-- Environment configuration
 - Toolchain detection
+- Environment configuration
 
 #### Packaging
 
 - ELF → Amiga HUNK conversion
 - Runtime package generation
 - Executable packaging
-- Build metadata contract
+- Explicit build metadata contract (`BUILD_INFO.json`)
 
 #### Runtime
 
-- ACE backend
-- Visual smoke tests
-- Interactive smoke tests
-- Text rendering smoke tests
-- Single-buffer renderer
-- Blitter renderer
+- ACE runtime backend
+- Generated runtime smoke-test programs
+- Visual diagnostics
+- Interactive diagnostics
+- Text rendering diagnostics
+- Single-buffer diagnostics
+- Blitter renderer diagnostics
 
-#### Developer tooling
+#### Developer Tooling
 
 - `g2stack dev`
 - `g2stack showcase`
@@ -91,27 +92,59 @@ This release establishes the complete Godot2Amiga development pipeline from
 
 #### Testing
 
-- 113 automated tests
+- 113 automated Python tests
 - Ruff formatting and linting
 - Deterministic build verification
-- Runtime smoke tests
-- Toolchain tests
 - Asset pipeline tests
+- Toolchain tests
+- Package generation tests
+- Runtime source generation tests
 
 ### Changed
 
-- Introduced explicit build metadata contract.
-- Removed executable name guessing from `pack.py`.
-- BUILD_INFO.json is now authoritative for packaging.
-- Packaging now resolves artifacts deterministically.
+- Introduced an explicit build metadata contract.
+- `BUILD_INFO.json` is now authoritative for package generation.
+- Removed executable-name guessing from `pack.py`.
+- Packaging now resolves build artifacts deterministically.
+- Normalized CMake target generation across the build pipeline.
 
 ### Fixed
 
-- Numerous runtime initialization issues discovered during smoke testing.
-- Multiple FS-UAE integration issues.
-- Asset pipeline validation.
-- Packaging consistency.
+- Asset pipeline validation issues.
+- Package generation consistency.
 - CMake target consistency.
+- Multiple runtime initialization issues discovered during manual testing.
+
+### Verification
+
+#### Automated
+
+- 113 automated tests passing
+- Ruff clean
+- End-to-end host-side pipeline validation
+- Package validation
+- Build generation
+- Asset conversion
+- Compilation
+- Packaging
+
+#### Manual
+
+The following components have been verified manually on a real development
+environment:
+
+- ACE toolchain
+- Bartman GCC toolchain
+- ELF → HUNK conversion
+- FS-UAE integration
+- `g2stack run`
+- `g2stack dev`
+- `g2stack showcase`
+- A500 configuration
+- Kickstart 1.3 boot
+- Runtime diagnostics
+
+Automated emulator boot testing has **not** yet been implemented.
 
 ---
 
@@ -123,7 +156,7 @@ Completed milestones:
 - ✅ M1 Package Format
 - ✅ M2 Project Generator
 - ✅ M3 Compiler
-- ✅ M4 Runtime Smoke Tests
+- ✅ M4 Runtime Diagnostics
 - ✅ M5 Asset Pipeline
 
 Current milestone:
