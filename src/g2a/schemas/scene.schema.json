@@ -4,37 +4,104 @@
   "title": "Godot2Amiga scene document",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "source", "root"],
+  "required": [
+    "id",
+    "source",
+    "root"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
-    "source": { "type": "string" },
-    "root": { "$ref": "#/$defs/node" }
+    "source": {
+      "type": "string"
+    },
+    "root": {
+      "$ref": "#/$defs/node"
+    }
   },
   "$defs": {
     "node": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "type", "parent", "children"],
+      "required": [
+        "id",
+        "name",
+        "type",
+        "parent",
+        "children"
+      ],
       "properties": {
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
         },
-        "name": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "minLength": 1 },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
         "parent": {
           "oneOf": [
-            { "type": "null" },
-            { "type": "string", "minLength": 1 }
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
           ]
         },
         "children": {
           "type": "array",
-          "items": { "$ref": "#/$defs/node" }
+          "items": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "properties": {
+          "$ref": "#/$defs/nodeProperties"
+        }
+      }
+    },
+    "position2d": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "nodeProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "texture": {
+          "type": "string",
+          "minLength": 1
+        },
+        "texture_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "$ref": "#/$defs/position2d"
         }
       }
     }

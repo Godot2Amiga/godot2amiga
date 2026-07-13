@@ -16,12 +16,5 @@
       "palette": "main",
       "interleaved": true
     }
-  ],
-  "runtime_demo": {
-    "palette": "main",
-    "bitmap": "logo",
-    "bpp": 2,
-    "x": 152,
-    "y": 120
-  }
+  ]
 }

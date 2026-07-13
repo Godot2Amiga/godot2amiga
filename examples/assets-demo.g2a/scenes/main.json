@@ -7,6 +7,21 @@
     "name": "Main",
     "type": "Node2D",
     "parent": null,
-    "children": []
+    "children": [
+      {
+        "id": "logo",
+        "name": "Logo",
+        "type": "Sprite2D",
+        "parent": "main",
+        "properties": {
+          "texture": "logo",
+          "position": {
+            "x": 152,
+            "y": 120
+          }
+        },
+        "children": []
+      }
+    ]
   }
 }
