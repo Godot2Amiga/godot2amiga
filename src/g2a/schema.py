@@ -17,15 +17,6 @@ def packaged_schema_directory():
     return files("g2a.schemas")
 
 
-def repository_root() -> Path:
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        candidate = parent / "schemas" / "g2a"
-        if candidate.is_dir():
-            return parent
-    raise RuntimeError("Could not locate repository root containing schemas/g2a")
-
-
 def schema_directory() -> Path:
     return packaged_schema_directory()
 
