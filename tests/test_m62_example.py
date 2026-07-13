@@ -15,14 +15,12 @@ def test_assets_demo_contains_three_scene_sprites() -> None:
     runtime = load_runtime_scene(EXAMPLE)
 
     assert [sprite.name for sprite in runtime.sprites] == [
-        "LogoLeft",
-        "LogoCenter",
         "LogoRight",
+        "LogoLeft",
     ]
     assert [(sprite.x, sprite.y) for sprite in runtime.sprites] == [
-        (72, 120),
-        (152, 120),
         (232, 120),
+        (72, 120),
     ]
 
 
@@ -30,14 +28,12 @@ def test_example_reuses_one_bitmap_for_three_blits() -> None:
     source = render_runtime_scene_main_c(load_runtime_scene(EXAMPLE))
 
     assert source.count("bitmapCreateFromPath(") == 1
-    assert source.count("blitCopy(") == 3
+    assert source.count("blitCopy(") == 2
 
-    positions = [
-        source.index("\n        72,\n        120,"),
-        source.index("\n        152,\n        120,"),
-        source.index("\n        232,\n        120,"),
-    ]
-    assert positions == sorted(positions)
+    right = source.index("\n        232,\n        120,")
+    left = source.index("\n        72,\n        120,")
+
+    assert right < left
 
 
 def test_example_uses_one_shared_palette() -> None:
@@ -57,7 +53,6 @@ def test_builder_generates_multi_sprite_runtime(
     source = (output / "src" / "main.c").read_text(encoding="utf-8")
 
     assert source.count("bitmapCreateFromPath(") == 1
-    assert source.count("blitCopy(") == 3
+    assert source.count("blitCopy(") == 2
     assert "\n        72,\n        120," in source
-    assert "\n        152,\n        120," in source
     assert "\n        232,\n        120," in source

@@ -30,7 +30,9 @@
               "position": {
                 "x": 0,
                 "y": 0
-              }
+              },
+              "visible": true,
+              "z_index": 10
             },
             "children": []
           }
@@ -58,7 +60,9 @@
               "position": {
                 "x": 20,
                 "y": 18
-              }
+              },
+              "visible": false,
+              "z_index": 0
             },
             "children": []
           }
@@ -98,7 +102,9 @@
                   "position": {
                     "x": 20,
                     "y": 18
-                  }
+                  },
+                  "visible": true,
+                  "z_index": -5
                 },
                 "children": []
               }

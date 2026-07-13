@@ -27,6 +27,7 @@ class RuntimeSprite:
     x: int
     y: int
     interleaved: bool
+    z_index: int = 0
 
 
 @dataclass(frozen=True)
@@ -38,12 +39,14 @@ class RuntimeScene:
 
 @dataclass(frozen=True)
 class SceneSprite:
-    """One Sprite2D with resolved world coordinates."""
+    """One Sprite2D with resolved world coordinates and render order."""
 
     name: str
     texture_id: str
     world_x: int
     world_y: int
+    z_index: int = 0
+    scene_order: int = 0
 
 
 def _load_json(path: Path) -> Any:
@@ -79,13 +82,31 @@ def _main_scene_path(package: Path) -> Path:
     raise ValueError("could not resolve one main scene JSON file")
 
 
+def node_is_visible(node) -> bool:
+    """Return Sprite2D visibility; omitted means visible."""
+    value = node.properties.get("visible", True)
+    if not isinstance(value, bool):
+        raise ValueError(f"node {node.name!r} visible must be boolean")
+    return value
+
+
+def node_z_index(node) -> int:
+    """Return Sprite2D z-index; omitted means zero."""
+    value = node.properties.get("z_index", 0)
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"node {node.name!r} z_index must be integer")
+    return value
+
+
 def collect_scene_sprites(root) -> tuple[SceneSprite, ...]:
-    """Collect every Sprite2D with resolved world coordinates."""
+    """Collect visible Sprite2D nodes in stable z-index order."""
     sprites: list[SceneSprite] = []
 
-    for transformed in walk_scene_with_transform(root):
+    for scene_order, transformed in enumerate(walk_scene_with_transform(root)):
         node = transformed.node
         if node.node_type != "Sprite2D":
+            continue
+        if not node_is_visible(node):
             continue
 
         texture_id = node.properties.get("texture")
@@ -101,10 +122,20 @@ def collect_scene_sprites(root) -> tuple[SceneSprite, ...]:
                 texture_id=texture_id,
                 world_x=transformed.world_x,
                 world_y=transformed.world_y,
+                z_index=node_z_index(node),
+                scene_order=scene_order,
             )
         )
 
-    return tuple(sprites)
+    return tuple(
+        sorted(
+            sprites,
+            key=lambda sprite: (
+                sprite.z_index,
+                sprite.scene_order,
+            ),
+        )
+    )
 
 
 def collect_sprite_nodes(root) -> tuple[SceneSprite, ...]:
@@ -222,6 +253,7 @@ def _resolve_runtime_sprite(
         x=sprite.world_x,
         y=sprite.world_y,
         interleaved=interleaved,
+        z_index=sprite.z_index,
     )
 
 
@@ -263,4 +295,5 @@ __all__ = [
     "collect_scene_sprites",
     "collect_sprite_nodes",
     "load_runtime_scene",
+    "node_is_visible",
 ]

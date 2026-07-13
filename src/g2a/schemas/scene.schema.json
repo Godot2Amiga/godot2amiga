@@ -102,6 +102,14 @@
         },
         "position": {
           "$ref": "#/$defs/position2d"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        },
+        "z_index": {
+          "type": "integer",
+          "default": 0
         }
       }
     }
