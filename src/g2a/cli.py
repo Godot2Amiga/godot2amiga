@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from g2a import __version__
+from g2a import assets as assets_command
 from g2a import build as build_command
 from g2a import compile as compile_command
 from g2a import convert as convert_command
@@ -28,6 +29,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    assets_parser = subparsers.add_parser(
+        "assets",
+        help="Convert package assets with ACE host tools",
+    )
+    assets_parser.add_argument("package", type=Path)
+    assets_parser.add_argument("--output", type=Path, required=True)
+    assets_parser.add_argument("--ace-root", type=Path)
+    assets_parser.add_argument("--force", action="store_true")
 
     validate_parser = subparsers.add_parser(
         "validate",
@@ -120,6 +130,18 @@ def _append_optional_path(
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.command == "assets":
+        forwarded = [
+            str(args.package),
+            "--output",
+            str(args.output),
+        ]
+        if args.ace_root is not None:
+            forwarded.extend(["--ace-root", str(args.ace_root)])
+        if args.force:
+            forwarded.append("--force")
+        return assets_command.main(forwarded)
 
     if args.command == "validate":
         validate_args = [str(args.package)]

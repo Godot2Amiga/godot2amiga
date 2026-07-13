@@ -39,6 +39,9 @@ jobs:
       - name: Sync dependencies
         run: uv sync --extra dev --frozen
 
+      - name: Check repository hygiene
+        run: ./scripts/check-repository-hygiene.sh
+
       - name: Lint
         run: uv run ruff check src tests
 
