@@ -6,6 +6,46 @@
 
 ---
 
+## Current milestone
+
+### M6.0 Runtime Asset Pipeline ✅
+
+Completed.
+
+---
+
+## Next
+
+### M6.1 Sprite2D
+
+Support:
+
+- one Sprite2D
+- static position
+- texture lookup
+
+---
+
+### M6.2 Multiple Sprites
+
+---
+
+### M7 TileMaps
+
+---
+
+### M8 Camera
+
+---
+
+### M9 Input
+
+---
+
+### M10 Audio
+
+---
+
 # Vision
 
 Godot2Amiga aims to make the Godot Editor a modern development environment for creating native software for classic Commodore Amiga computers.

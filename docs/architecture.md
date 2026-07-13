@@ -2056,3 +2056,15 @@ The Runtime executes the resulting software on classic Amiga hardware.
 By separating these responsibilities, the project remains modular, testable, deterministic and maintainable while staying focused on its primary goal:
 
 > Enabling modern development workflows for creating efficient native Amiga software.
+
+---
+
+## Runtime Generation
+
+The generated runtime is derived from working ACE Showcase examples.
+
+Rather than reproducing ACE behavior manually, Godot2Amiga follows the proven
+initialization, frame loop and teardown patterns from ACE Showcase and
+specializes them for generated scenes.
+
+This minimizes runtime risk while remaining fully native.
