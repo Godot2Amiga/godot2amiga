@@ -1,4 +1,4 @@
-"""Normalize all Sprite2D nodes into a runtime scene."""
+"""Normalize Sprite2D nodes into a transformed runtime scene."""
 
 from __future__ import annotations
 
@@ -7,16 +7,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from g2a.backend.ace.scene_sprite import (
-    SceneNode,
-    Sprite2DNode,
-    load_scene_root,
-    walk_scene,
+from g2a.backend.ace.scene_sprite import load_scene_root
+from g2a.backend.ace.scene_transform import (
+    walk_scene_with_transform,
 )
 
 
 @dataclass(frozen=True)
 class RuntimeSprite:
+    """One static Sprite2D resolved to runtime asset paths."""
+
     name: str
     texture_id: str
     bitmap_path: str
@@ -31,7 +31,19 @@ class RuntimeSprite:
 
 @dataclass(frozen=True)
 class RuntimeScene:
+    """Normalized scene data consumed by ACE code generation."""
+
     sprites: tuple[RuntimeSprite, ...]
+
+
+@dataclass(frozen=True)
+class SceneSprite:
+    """One Sprite2D with resolved world coordinates."""
+
+    name: str
+    texture_id: str
+    world_x: int
+    world_y: int
 
 
 def _load_json(path: Path) -> Any:
@@ -40,6 +52,22 @@ def _load_json(path: Path) -> Any:
 
 
 def _main_scene_path(package: Path) -> Path:
+    project_path = package / "project.json"
+    if project_path.is_file():
+        project = _load_json(project_path)
+        if isinstance(project, dict):
+            source = project.get("source")
+            candidates = [
+                project.get("main_scene"),
+                (source.get("main_scene") if isinstance(source, dict) else None),
+                (source.get("scene") if isinstance(source, dict) else None),
+            ]
+            for candidate in candidates:
+                if isinstance(candidate, str) and candidate:
+                    path = package / candidate
+                    if path.is_file():
+                        return path
+
     conventional = package / "scenes" / "main.json"
     if conventional.is_file():
         return conventional
@@ -51,32 +79,12 @@ def _main_scene_path(package: Path) -> Path:
     raise ValueError("could not resolve one main scene JSON file")
 
 
-def _position(value: Any) -> tuple[int, int]:
-    if isinstance(value, dict):
-        x, y = value.get("x"), value.get("y")
-    elif isinstance(value, list) and len(value) == 2:
-        x, y = value
-    else:
-        raise ValueError("Sprite2D position must contain integer x and y values")
+def collect_scene_sprites(root) -> tuple[SceneSprite, ...]:
+    """Collect every Sprite2D with resolved world coordinates."""
+    sprites: list[SceneSprite] = []
 
-    if (
-        not isinstance(x, int)
-        or isinstance(x, bool)
-        or not isinstance(y, int)
-        or isinstance(y, bool)
-    ):
-        raise ValueError("Sprite2D position must contain integer x and y values")
-    if x < 0 or y < 0:
-        raise ValueError("Sprite2D position must use non-negative coordinates")
-    return x, y
-
-
-def collect_sprite_nodes(
-    root: SceneNode,
-) -> tuple[Sprite2DNode, ...]:
-    sprites: list[Sprite2DNode] = []
-
-    for node in walk_scene(root):
+    for transformed in walk_scene_with_transform(root):
+        node = transformed.node
         if node.node_type != "Sprite2D":
             continue
 
@@ -87,21 +95,26 @@ def collect_sprite_nodes(
         if not isinstance(texture_id, str) or not texture_id:
             raise ValueError(f"Sprite2D {node.name!r} has no texture asset id")
 
-        x, y = _position(node.properties.get("position"))
         sprites.append(
-            Sprite2DNode(
+            SceneSprite(
                 name=node.name,
                 texture_id=texture_id,
-                x=x,
-                y=y,
+                world_x=transformed.world_x,
+                world_y=transformed.world_y,
             )
         )
 
     return tuple(sprites)
 
 
+def collect_sprite_nodes(root) -> tuple[SceneSprite, ...]:
+    """Backward-compatible alias for transformed sprite collection."""
+    return collect_scene_sprites(root)
+
+
 def _palette_color_count(path: Path) -> int:
     count = 0
+
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if (
@@ -118,22 +131,105 @@ def _palette_color_count(path: Path) -> int:
             continue
 
         try:
-            channels = [int(field) for field in fields[:3]]
+            channels = tuple(int(field) for field in fields[:3])
         except ValueError:
             continue
 
         if all(0 <= channel <= 255 for channel in channels):
             count += 1
 
-    if not 1 <= count <= 32:
-        raise ValueError(f"palette must contain between 1 and 32 colors: {path}")
+    if count < 1:
+        raise ValueError(f"palette has no readable colors: {path}")
+    if count > 32:
+        raise ValueError("M7.0 supports at most 32 palette colors")
+
     return count
 
 
+def _asset_entries(
+    manifest: dict[str, Any],
+) -> tuple[list[Any], list[Any]]:
+    bitmaps = manifest.get("bitmaps", [])
+    palettes = manifest.get("palettes", [])
+
+    if not isinstance(bitmaps, list):
+        raise ValueError("asset bitmaps must be an array")
+    if not isinstance(palettes, list):
+        raise ValueError("asset palettes must be an array")
+
+    return bitmaps, palettes
+
+
+def _resolve_runtime_sprite(
+    package: Path,
+    sprite: SceneSprite,
+    bitmaps: list[Any],
+    palettes: list[Any],
+) -> RuntimeSprite:
+    bitmap = next(
+        (
+            entry
+            for entry in bitmaps
+            if isinstance(entry, dict) and entry.get("id") == sprite.texture_id
+        ),
+        None,
+    )
+    if bitmap is None:
+        raise ValueError(f"Sprite2D references unknown texture asset id: {sprite.texture_id}")
+
+    palette_id = bitmap.get("palette")
+    if not isinstance(palette_id, str) or not palette_id:
+        raise ValueError(f"bitmap {sprite.texture_id!r} has no palette id")
+
+    palette = next(
+        (entry for entry in palettes if isinstance(entry, dict) and entry.get("id") == palette_id),
+        None,
+    )
+    if palette is None:
+        raise ValueError(
+            f"bitmap {sprite.texture_id!r} references unknown palette id: {palette_id}"
+        )
+
+    bitmap_output = bitmap.get("output")
+    palette_output = palette.get("output")
+    palette_source = palette.get("source")
+    interleaved = bitmap.get("interleaved", False)
+
+    if not isinstance(bitmap_output, str) or not bitmap_output:
+        raise ValueError(f"bitmap {sprite.texture_id!r} has no output path")
+    if not isinstance(palette_output, str) or not palette_output:
+        raise ValueError(f"palette {palette_id!r} has no output path")
+    if not isinstance(palette_source, str) or not palette_source:
+        raise ValueError(f"palette {palette_id!r} has no source path")
+    if not isinstance(interleaved, bool):
+        raise ValueError("bitmap interleaved must be boolean")
+
+    source_path = package / palette_source
+    if not source_path.is_file():
+        raise ValueError(f"palette source does not exist: {source_path}")
+
+    source_color_count = _palette_color_count(source_path)
+    bpp = max(1, (source_color_count - 1).bit_length())
+
+    return RuntimeSprite(
+        name=sprite.name,
+        texture_id=sprite.texture_id,
+        bitmap_path=f"data/{bitmap_output}",
+        palette_id=palette_id,
+        palette_path=f"data/{palette_output}",
+        bpp=bpp,
+        color_count=1 << bpp,
+        x=sprite.world_x,
+        y=sprite.world_y,
+        interleaved=interleaved,
+    )
+
+
 def load_runtime_scene(package: Path) -> RuntimeScene:
+    """Load all Sprite2D nodes with parent-relative world positions."""
     package = package.expanduser().resolve()
     root = load_scene_root(_main_scene_path(package))
-    scene_sprites = collect_sprite_nodes(root)
+    scene_sprites = collect_scene_sprites(root)
 
     if not scene_sprites:
         return RuntimeScene(sprites=())
@@ -146,75 +242,25 @@ def load_runtime_scene(package: Path) -> RuntimeScene:
     if not isinstance(manifest, dict):
         raise ValueError("asset manifest must contain a JSON object")
 
-    bitmaps = manifest.get("bitmaps", [])
-    palettes = manifest.get("palettes", [])
-    if not isinstance(bitmaps, list) or not isinstance(palettes, list):
-        raise ValueError("asset bitmaps and palettes must be arrays")
-
-    runtime_sprites: list[RuntimeSprite] = []
-
-    for sprite in scene_sprites:
-        bitmap = next(
-            (
-                entry
-                for entry in bitmaps
-                if isinstance(entry, dict) and entry.get("id") == sprite.texture_id
-            ),
-            None,
+    bitmaps, palettes = _asset_entries(manifest)
+    sprites = tuple(
+        _resolve_runtime_sprite(
+            package,
+            sprite,
+            bitmaps,
+            palettes,
         )
-        if bitmap is None:
-            raise ValueError(f"Sprite2D references unknown texture asset id: {sprite.texture_id}")
+        for sprite in scene_sprites
+    )
 
-        palette_id = bitmap.get("palette")
-        palette = next(
-            (
-                entry
-                for entry in palettes
-                if isinstance(entry, dict) and entry.get("id") == palette_id
-            ),
-            None,
-        )
-        if not isinstance(palette_id, str) or palette is None:
-            raise ValueError(f"bitmap {sprite.texture_id!r} has invalid palette")
-
-        bitmap_output = bitmap.get("output")
-        palette_output = palette.get("output")
-        palette_source = palette.get("source")
-        interleaved = bitmap.get("interleaved", False)
-
-        if not isinstance(bitmap_output, str) or not bitmap_output:
-            raise ValueError("bitmap has no output path")
-        if not isinstance(palette_output, str) or not palette_output:
-            raise ValueError("palette has no output path")
-        if not isinstance(palette_source, str) or not palette_source:
-            raise ValueError("palette has no source path")
-        if not isinstance(interleaved, bool):
-            raise ValueError("bitmap interleaved must be boolean")
-
-        source_color_count = _palette_color_count(package / palette_source)
-        bpp = max(1, (source_color_count - 1).bit_length())
-
-        runtime_sprites.append(
-            RuntimeSprite(
-                name=sprite.name,
-                texture_id=sprite.texture_id,
-                bitmap_path=f"data/{bitmap_output}",
-                palette_id=palette_id,
-                palette_path=f"data/{palette_output}",
-                bpp=bpp,
-                color_count=1 << bpp,
-                x=sprite.x,
-                y=sprite.y,
-                interleaved=interleaved,
-            )
-        )
-
-    return RuntimeScene(sprites=tuple(runtime_sprites))
+    return RuntimeScene(sprites=sprites)
 
 
 __all__ = [
     "RuntimeScene",
     "RuntimeSprite",
+    "SceneSprite",
+    "collect_scene_sprites",
     "collect_sprite_nodes",
     "load_runtime_scene",
 ]
