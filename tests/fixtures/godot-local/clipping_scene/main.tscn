@@ -1,0 +1,29 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://test_logo.png" id="1"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Center" type="Sprite2D" parent="."]
+position = Vector2(160, 128)
+texture = ExtResource("1")
+
+[node name="Left" type="Sprite2D" parent="."]
+position = Vector2(-8, 40)
+texture = ExtResource("1")
+
+[node name="Top" type="Sprite2D" parent="."]
+position = Vector2(80, -8)
+texture = ExtResource("1")
+
+[node name="Right" type="Sprite2D" parent="."]
+position = Vector2(312, 80)
+texture = ExtResource("1")
+
+[node name="Bottom" type="Sprite2D" parent="."]
+position = Vector2(120, 248)
+texture = ExtResource("1")
+
+[node name="Outside" type="Sprite2D" parent="."]
+position = Vector2(400, 300)
+texture = ExtResource("1")
