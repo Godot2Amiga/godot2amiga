@@ -25,7 +25,7 @@ mono_crash.*.json
 htmlcov/
 __pycache__/
 *.py[cod]
-.bak
+*.bak
 
 # Generated build output
 build/
