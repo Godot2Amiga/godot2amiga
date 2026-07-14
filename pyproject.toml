@@ -27,7 +27,8 @@ classifiers = [
 
 dependencies = [
   "jsonschema>=4.23,<5",
-  "rich>=13.9,<15"
+  "rich>=13.9,<15",
+  "pillow>=11,<13"
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,8 @@ dev = [
 ]
 
 [project.scripts]
+g2a-tscn = "g2a.tscn_cli:main"
+g2a-assets = "g2a.assets:main"
 g2a-compile = "g2a.compile:main"
 g2a = "g2a.cli:main"
 g2a-validate = "g2a.validate:main"
@@ -77,4 +80,11 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=6.3.0",
+    "ruff>=0.15.21",
+]
 

@@ -79,12 +79,10 @@
       ],
       "properties": {
         "x": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "y": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         }
       }
     },

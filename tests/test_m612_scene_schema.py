@@ -48,14 +48,12 @@ def test_scene_schema_accepts_sprite2d_properties() -> None:
     validator.validate(valid_scene())
 
 
-def test_scene_schema_rejects_negative_position() -> None:
+def test_scene_schema_accepts_negative_local_position() -> None:
     scene = valid_scene()
     scene["root"]["children"][0]["properties"]["position"]["x"] = -1
 
     validator = Draft202012Validator(load_scene_schema())
-
-    with pytest.raises(ValidationError):
-        validator.validate(scene)
+    validator.validate(scene)
 
 
 def test_scene_schema_rejects_unknown_node_property() -> None:
