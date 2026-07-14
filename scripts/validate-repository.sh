@@ -26,11 +26,11 @@ required_files=(
     "addons/godot2amiga/plugin.cfg"
     "addons/godot2amiga/plugin.gd"
     "addons/godot2amiga/project_generator.gd"
-    "schemas/g2a/manifest.schema.json"
-    "schemas/g2a/project.schema.json"
-    "schemas/g2a/export-profile.schema.json"
-    "schemas/g2a/scene.schema.json"
-    "schemas/g2a/diagnostics.schema.json"
+    "src/g2a/schemas/manifest.schema.json"
+    "src/g2a/schemas/project.schema.json"
+    "src/g2a/schemas/export-profile.schema.json"
+    "src/g2a/schemas/scene.schema.json"
+    "src/g2a/schemas/diagnostics.schema.json"
     "tests/test_validate.py"
     "tests/test_cli.py"
 )
@@ -43,11 +43,11 @@ if grep -RIn --include='*.gd' '```' addons examples; then
     fail "Markdown code fences were found inside GDScript files."
 fi
 
-python3 -m json.tool schemas/g2a/manifest.schema.json >/dev/null
-python3 -m json.tool schemas/g2a/project.schema.json >/dev/null
-python3 -m json.tool schemas/g2a/export-profile.schema.json >/dev/null
-python3 -m json.tool schemas/g2a/scene.schema.json >/dev/null
-python3 -m json.tool schemas/g2a/diagnostics.schema.json >/dev/null
+python3 -m json.tool src/g2a/schemas/manifest.schema.json >/dev/null
+python3 -m json.tool src/g2a/schemas/project.schema.json >/dev/null
+python3 -m json.tool src/g2a/schemas/export-profile.schema.json >/dev/null
+python3 -m json.tool src/g2a/schemas/scene.schema.json >/dev/null
+python3 -m json.tool src/g2a/schemas/diagnostics.schema.json >/dev/null
 
 grep -q 'extends EditorPlugin' addons/godot2amiga/plugin.gd \
     || fail "plugin.gd does not extend EditorPlugin."
