@@ -28,6 +28,8 @@ def sprite(
         color_count=1 << bpp,
         x=x,
         y=y,
+        width=16,
+        height=16,
         interleaved=True,
     )
 

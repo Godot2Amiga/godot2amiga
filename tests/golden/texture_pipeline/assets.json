@@ -1,0 +1,20 @@
+{
+  "bitmaps": [
+    {
+      "id": "test-logo",
+      "interleaved": true,
+      "output": "bitmaps/test-logo.bm",
+      "palette": "main",
+      "source": "assets/test-logo.png"
+    }
+  ],
+  "palettes": [
+    {
+      "convert_colors": false,
+      "id": "main",
+      "output": "palettes/main.plt",
+      "source": "assets/main.gpl"
+    }
+  ],
+  "version": 1
+}

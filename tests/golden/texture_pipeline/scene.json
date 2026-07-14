@@ -1,0 +1,33 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/scene.schema.json",
+  "id": "main",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "id": "logo",
+        "name": "Logo",
+        "parent": "main",
+        "properties": {
+          "position": {
+            "x": 40,
+            "y": 56
+          },
+          "texture": "test-logo"
+        },
+        "type": "Sprite2D"
+      }
+    ],
+    "id": "main",
+    "name": "Main",
+    "parent": null,
+    "properties": {
+      "position": {
+        "x": 32,
+        "y": 24
+      }
+    },
+    "type": "Node2D"
+  },
+  "source": "tests/fixtures/godot-local/texture_scene/main.tscn"
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/manifest.schema.json",
+  "format": "g2a",
+  "format_version": "0.1.0",
+  "generator": {
+    "godot_version": "0.0.0",
+    "name": "g2a-tscn",
+    "version": "0.7.2"
+  }
+}

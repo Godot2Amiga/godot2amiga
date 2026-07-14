@@ -1,0 +1,22 @@
+paletteLoadFromPath(
+        "data/palettes/main.plt",
+        s_pViewport->pPalette,
+        2
+    );
+---
+s_pBitmap_test_logo = bitmapCreateFromPath(
+        "data/bitmaps/test-logo.bm",
+        0
+    );
+---
+blitCopy(
+        s_pBitmap_test_logo,
+        0,
+        0,
+        s_pBuffer->pBack,
+        72,
+        80,
+        16,
+        16,
+        MINTERM_COPY
+    );

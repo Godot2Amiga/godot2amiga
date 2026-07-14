@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from g2a.backend.ace.scene_sprite import load_scene_root
 from g2a.backend.ace.scene_transform import (
     walk_scene_with_transform,
@@ -26,6 +28,8 @@ class RuntimeSprite:
     color_count: int
     x: int
     y: int
+    width: int | None
+    height: int | None
     interleaved: bool
     z_index: int = 0
 
@@ -191,6 +195,19 @@ def _asset_entries(
     return bitmaps, palettes
 
 
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    if not path.is_file():
+        raise ValueError(f"bitmap source does not exist: {path}")
+
+    with Image.open(path) as image:
+        width, height = image.size
+
+    if width <= 0 or height <= 0:
+        raise ValueError(f"bitmap source has invalid dimensions: {path}")
+
+    return width, height
+
+
 def _resolve_runtime_sprite(
     package: Path,
     sprite: SceneSprite,
@@ -239,6 +256,15 @@ def _resolve_runtime_sprite(
     if not source_path.is_file():
         raise ValueError(f"palette source does not exist: {source_path}")
 
+    bitmap_source = bitmap.get("source")
+    width: int | None = None
+    height: int | None = None
+
+    if isinstance(bitmap_source, str) and bitmap_source:
+        bitmap_source_path = package / bitmap_source
+        if bitmap_source_path.is_file():
+            width, height = _png_dimensions(bitmap_source_path)
+
     source_color_count = _palette_color_count(source_path)
     bpp = max(1, (source_color_count - 1).bit_length())
 
@@ -252,6 +278,8 @@ def _resolve_runtime_sprite(
         color_count=1 << bpp,
         x=sprite.world_x,
         y=sprite.world_y,
+        width=width,
+        height=height,
         interleaved=interleaved,
         z_index=sprite.z_index,
     )

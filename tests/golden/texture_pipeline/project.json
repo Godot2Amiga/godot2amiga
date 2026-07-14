@@ -1,0 +1,11 @@
+{
+  "$schema": "https://godot2amiga.org/schemas/g2a/project.schema.json",
+  "id": "texture-scene",
+  "main_scene": "scenes/main.json",
+  "name": "Texture Scene",
+  "source": {
+    "engine": "godot",
+    "main_scene": "tests/fixtures/godot-local/texture_scene/main.tscn",
+    "project_file": "unknown"
+  }
+}
