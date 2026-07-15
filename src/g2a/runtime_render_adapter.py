@@ -36,11 +36,27 @@ def _read(
 
 def static_sprite_to_render_node(
     sprite: object,
+    *,
+    fallback_scene_order: int = 0,
 ) -> RuntimeRenderNode:
+    """Adapt the existing static runtime sprite model.
+
+    Current RuntimeSprite objects predate node identity and scene-order
+    fields. During migration, their name is used as the stable fallback
+    identity and their source-list position as fallback scene order.
+    """
+    name = _read(sprite, "name")
+    node_id = _read(
+        sprite,
+        "node_id",
+        "id",
+        default=name,
+    )
+
     try:
         return RuntimeRenderNode(
-            node_id=_read(sprite, "node_id", "id"),
-            name=_read(sprite, "name"),
+            node_id=node_id,
+            name=name,
             kind=RenderNodeKind.SPRITE,
             x=_read(sprite, "x"),
             y=_read(sprite, "y"),
@@ -48,7 +64,11 @@ def static_sprite_to_render_node(
             height=_read(sprite, "height"),
             visible=_read(sprite, "visible", default=True),
             z_index=_read(sprite, "z_index", default=0),
-            scene_order=_read(sprite, "scene_order", default=0),
+            scene_order=_read(
+                sprite,
+                "scene_order",
+                default=fallback_scene_order,
+            ),
             texture_id=_read(
                 sprite,
                 "texture_id",
@@ -64,6 +84,7 @@ def static_sprite_to_render_node(
 def animated_sprite_to_render_node(
     sprite: RuntimeAnimatedSceneSprite,
 ) -> RuntimeRenderNode:
+    """Adapt the existing animated runtime sprite model."""
     try:
         return RuntimeRenderNode(
             node_id=sprite.node_id,
@@ -86,9 +107,16 @@ def merge_render_nodes(
     static_sprites: Iterable[object],
     animated_sprites: Iterable[RuntimeAnimatedSceneSprite],
 ) -> tuple[RuntimeRenderNode, ...]:
-    nodes = tuple(static_sprite_to_render_node(sprite) for sprite in static_sprites) + tuple(
-        animated_sprite_to_render_node(sprite) for sprite in animated_sprites
+    """Adapt and combine static and animated runtime collections."""
+    static_nodes = tuple(
+        static_sprite_to_render_node(
+            sprite,
+            fallback_scene_order=index,
+        )
+        for index, sprite in enumerate(static_sprites)
     )
+    animated_nodes = tuple(animated_sprite_to_render_node(sprite) for sprite in animated_sprites)
+    nodes = static_nodes + animated_nodes
 
     seen: set[str] = set()
     for node in nodes:

@@ -23,6 +23,7 @@ from g2a.backend.ace.templates import (
 from g2a.project import load_package
 from g2a.runtime_animated_main_codegen import render_animated_scene_main_c
 from g2a.runtime_animated_scene import load_runtime_animated_sprites
+from g2a.runtime_render_scene import load_runtime_render_nodes
 
 EXIT_OK = 0
 EXIT_OUTPUT_EXISTS = 2
@@ -71,13 +72,17 @@ def generate_ace_project(config: AceBuildConfig) -> int:
 
     runtime_scene = load_runtime_scene(config.resolved_package_path)
     animated_sprites = load_runtime_animated_sprites(config.resolved_package_path)
+    render_nodes = load_runtime_render_nodes(config.resolved_package_path)
 
-    if animated_sprites:
+    has_animated = any(node.is_animated for node in render_nodes)
+    has_static = any(node.is_static for node in render_nodes)
+
+    if has_animated:
         main_source = render_animated_scene_main_c(
             config.resolved_package_path,
             animated_sprites,
         )
-    elif runtime_scene.sprites:
+    elif has_static:
         main_source = render_runtime_scene_main_c(runtime_scene)
     else:
         main_source = render_main_c(project_name)

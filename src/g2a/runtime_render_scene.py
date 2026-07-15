@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from g2a.backend.ace.runtime_scene import load_runtime_scene
 from g2a.runtime_animated_scene import load_runtime_animated_sprites
 from g2a.runtime_render_adapter import merge_render_nodes
 from g2a.runtime_render_node import RuntimeRenderNode
@@ -13,6 +12,13 @@ from g2a.runtime_render_node import RuntimeRenderNode
 def load_runtime_render_nodes(
     package: Path,
 ) -> tuple[RuntimeRenderNode, ...]:
+    """Load all currently supported renderable nodes from a package.
+
+    The static loader import is intentionally local to avoid the
+    backend package's builder import cycle.
+    """
+    from g2a.backend.ace.runtime_scene import load_runtime_scene
+
     package = package.expanduser().resolve()
 
     static_scene = load_runtime_scene(package)
