@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from g2a.animated_scene_contract import animated_scene_nodes
 from g2a.gimp_palette import generate_m5_assets
 from g2a.godot_tscn import parse_tscn, to_g2a_scene_document
 from g2a.tscn_assets import import_texture_assets
@@ -87,6 +88,63 @@ def _prepare_output(config: TscnPackageConfig) -> int:
     return EXIT_OK
 
 
+def _merge_animated_scene_properties(
+    scene_document: dict[str, Any],
+    source: Path,
+) -> None:
+    source_text = source.read_text(encoding="utf-8")
+
+    if 'type="AnimatedSprite2D"' not in source_text:
+        return
+
+    animated_nodes = animated_scene_nodes(source)
+    if not animated_nodes:
+        return
+
+    properties_by_id = {node["id"]: node["properties"] for node in animated_nodes}
+    matched: set[str] = set()
+
+    def walk(node: dict[str, Any]) -> None:
+        node_id = node.get("id")
+        node_type = node.get("type")
+
+        if (
+            node_type == "AnimatedSprite2D"
+            and isinstance(node_id, str)
+            and node_id in properties_by_id
+        ):
+            existing = node.get("properties")
+            if existing is None:
+                existing = {}
+                node["properties"] = existing
+            if not isinstance(existing, dict):
+                raise ValueError(f"AnimatedSprite2D {node_id!r} properties must be an object")
+
+            existing.update(properties_by_id[node_id])
+            matched.add(node_id)
+
+        children = node.get("children", [])
+        if not isinstance(children, list):
+            raise ValueError(f"scene node {node_id!r} children must be an array")
+
+        for child in children:
+            if not isinstance(child, dict):
+                raise ValueError(f"scene node {node_id!r} child must be an object")
+            walk(child)
+
+    root = scene_document.get("root")
+    if not isinstance(root, dict):
+        raise ValueError("scene document has no root node")
+
+    walk(root)
+
+    missing = set(properties_by_id) - matched
+    if missing:
+        raise ValueError(
+            "could not merge AnimatedSprite2D properties for: " + ", ".join(sorted(missing))
+        )
+
+
 def generate_tscn_package(config: TscnPackageConfig) -> int:
     source = config.resolved_source
     if not source.is_file():
@@ -116,6 +174,10 @@ def generate_tscn_package(config: TscnPackageConfig) -> int:
         parsed_scene,
         scene_id=scene_id,
         source=str(source),
+    )
+    _merge_animated_scene_properties(
+        scene_document,
+        source,
     )
 
     manifest = {

@@ -112,8 +112,6 @@ void genericProcess(void) {{
         return;
     }}
     vPortWaitForEnd(s_pViewport);
-    bitmapClear(s_pBuffer->pBack, 0);
-
 {unit.tick_loop}
 
 {unit.render_loop}

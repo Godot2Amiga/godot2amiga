@@ -21,6 +21,8 @@ from g2a.backend.ace.templates import (
     render_makefile,
 )
 from g2a.project import load_package
+from g2a.runtime_animated_main_codegen import render_animated_scene_main_c
+from g2a.runtime_animated_scene import load_runtime_animated_sprites
 
 EXIT_OK = 0
 EXIT_OUTPUT_EXISTS = 2
@@ -68,8 +70,14 @@ def generate_ace_project(config: AceBuildConfig) -> int:
     output_path = config.resolved_output_path
 
     runtime_scene = load_runtime_scene(config.resolved_package_path)
+    animated_sprites = load_runtime_animated_sprites(config.resolved_package_path)
 
-    if runtime_scene.sprites:
+    if animated_sprites:
+        main_source = render_animated_scene_main_c(
+            config.resolved_package_path,
+            animated_sprites,
+        )
+    elif runtime_scene.sprites:
         main_source = render_runtime_scene_main_c(runtime_scene)
     else:
         main_source = render_main_c(project_name)

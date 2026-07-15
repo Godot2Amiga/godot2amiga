@@ -41,6 +41,7 @@ dev = [
 [project.scripts]
 g2a-tscn = "g2a.tscn_cli:main"
 g2a-assets = "g2a.assets:main"
+g2a-animated-assets = "g2a.animated_assets_cli:main"
 g2a-stage-assets = "g2a.runtime_asset_cli:main"
 g2a-runtime-build = "g2a.runtime_build:main"
 g2a-compile = "g2a.compile:main"
