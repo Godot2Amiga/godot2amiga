@@ -1,4 +1,4 @@
-"""Direct unified runtime scene loading."""
+"""Direct, heuristic-free unified runtime scene assembly."""
 
 from __future__ import annotations
 
@@ -7,16 +7,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from g2a.runtime_animated_scene import load_runtime_animated_sprites
+from PIL import Image
+
+from g2a.runtime_animation import parse_runtime_animated_sprite
+from g2a.runtime_asset_registry import (
+    RuntimeAssetRegistry,
+    RuntimeBitmapAsset,
+    load_runtime_asset_registry,
+)
 from g2a.runtime_render_node import (
     RenderNodeKind,
     RuntimeRenderNode,
     sort_render_nodes,
 )
+from g2a.runtime_scene_assets import (
+    SceneAssetBindingKind,
+    SceneAssetBindings,
+    load_scene_asset_bindings,
+)
 
 
 class DirectRuntimeSceneError(ValueError):
-    """Raised when scene identity cannot be reconciled with runtime data."""
+    """Raised when direct scene assembly cannot be completed."""
 
 
 @dataclass(frozen=True)
@@ -29,11 +41,14 @@ class SceneRenderIdentity:
     visible: bool
     z_index: int
     scene_order: int
+    properties: dict[str, Any]
 
 
 def _load_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise DirectRuntimeSceneError(f"missing JSON document: {path}") from error
     except json.JSONDecodeError as error:
         raise DirectRuntimeSceneError(f"invalid JSON in {path}: {error}") from error
 
@@ -119,6 +134,7 @@ def _walk(
                     field=f"{node_id}.z_index",
                 ),
                 scene_order=scene_order,
+                properties=dict(properties),
             )
         )
 
@@ -138,12 +154,8 @@ def _walk(
         )
 
 
-def load_scene_render_identities(
-    package: Path,
-) -> tuple[SceneRenderIdentity, ...]:
-    package = package.expanduser().resolve()
+def _scene_root(package: Path) -> dict[str, Any]:
     project = _load_json(package / "project.json")
-
     if not isinstance(project, dict):
         raise DirectRuntimeSceneError("project.json must contain an object")
 
@@ -158,10 +170,18 @@ def load_scene_render_identities(
     root = scene.get("root")
     if not isinstance(root, dict):
         raise DirectRuntimeSceneError("scene document has no root node")
+    return root
 
+
+def load_scene_render_identities(
+    package: Path,
+) -> tuple[SceneRenderIdentity, ...]:
+    """Read identity and transform data directly from scene JSON."""
+    package = package.expanduser().resolve()
     identities: list[SceneRenderIdentity] = []
+
     _walk(
-        root,
+        _scene_root(package),
         parent_x=0,
         parent_y=0,
         order=[0],
@@ -170,105 +190,136 @@ def load_scene_render_identities(
     return tuple(identities)
 
 
-def _match_static(
-    identity: SceneRenderIdentity,
-    legacy_sprites: tuple[object, ...],
-    used: set[int],
-) -> object:
-    candidates = [
-        (index, sprite)
-        for index, sprite in enumerate(legacy_sprites)
-        if index not in used
-        and getattr(sprite, "name", None) == identity.name
-        and getattr(sprite, "x", None) == identity.x
-        and getattr(sprite, "y", None) == identity.y
-        and getattr(sprite, "z_index", 0) == identity.z_index
-    ]
+def _bitmap_dimensions(
+    package: Path,
+    bitmap: RuntimeBitmapAsset,
+) -> tuple[int, int]:
+    path = package / bitmap.source_path
+    try:
+        with Image.open(path) as image:
+            width, height = image.size
+    except FileNotFoundError as error:
+        raise DirectRuntimeSceneError(f"missing bitmap source: {path}") from error
+    except OSError as error:
+        raise DirectRuntimeSceneError(f"could not read bitmap source {path}: {error}") from error
 
-    if len(candidates) != 1:
+    if width <= 0 or height <= 0:
+        raise DirectRuntimeSceneError(f"bitmap {bitmap.asset_id!r} has invalid dimensions")
+    return width, height
+
+
+def _static_node(
+    package: Path,
+    identity: SceneRenderIdentity,
+    registry: RuntimeAssetRegistry,
+    bindings: SceneAssetBindings,
+) -> RuntimeRenderNode:
+    binding = bindings.for_node(identity.node_id)
+    if binding.kind is not SceneAssetBindingKind.BITMAP:
+        raise DirectRuntimeSceneError(f"static node {identity.node_id!r} has non-bitmap binding")
+    if len(binding.asset_ids) != 1:
+        raise DirectRuntimeSceneError(f"static node {identity.node_id!r} must bind one bitmap")
+
+    bitmap = registry.bitmap(binding.asset_ids[0])
+    width, height = _bitmap_dimensions(package, bitmap)
+
+    return RuntimeRenderNode(
+        node_id=identity.node_id,
+        name=identity.name,
+        kind=RenderNodeKind.SPRITE,
+        x=identity.x,
+        y=identity.y,
+        width=width,
+        height=height,
+        visible=identity.visible,
+        z_index=identity.z_index,
+        scene_order=identity.scene_order,
+        texture_id=bitmap.asset_id,
+    )
+
+
+def _animated_node(
+    package: Path,
+    identity: SceneRenderIdentity,
+    registry: RuntimeAssetRegistry,
+    bindings: SceneAssetBindings,
+) -> RuntimeRenderNode:
+    binding = bindings.for_node(identity.node_id)
+    if binding.kind is not SceneAssetBindingKind.ANIMATION:
         raise DirectRuntimeSceneError(
-            f"could not uniquely match static runtime sprite for {identity.node_id!r}"
+            f"animated node {identity.node_id!r} has non-animation binding"
         )
 
-    index, sprite = candidates[0]
-    used.add(index)
-    return sprite
-
-
-def _match_animated(
-    identity: SceneRenderIdentity,
-    animated_sprites: tuple[object, ...],
-) -> object:
-    candidates = [
-        sprite
-        for sprite in animated_sprites
-        if getattr(sprite, "node_id", None) == identity.node_id
-    ]
-    if len(candidates) != 1:
-        raise DirectRuntimeSceneError(
-            f"could not uniquely match animated runtime sprite for {identity.node_id!r}"
+    dimensions = {
+        _bitmap_dimensions(
+            package,
+            registry.bitmap(asset_id),
         )
-    return candidates[0]
+        for asset_id in binding.asset_ids
+    }
+    if len(dimensions) != 1:
+        raise DirectRuntimeSceneError(
+            f"animated node {identity.node_id!r} uses inconsistent frame dimensions"
+        )
+
+    width, height = next(iter(dimensions))
+    animation = parse_runtime_animated_sprite(
+        {
+            "name": identity.name,
+            "type": "AnimatedSprite2D",
+            "properties": identity.properties,
+        }
+    )
+
+    return RuntimeRenderNode(
+        node_id=identity.node_id,
+        name=identity.name,
+        kind=RenderNodeKind.ANIMATED_SPRITE,
+        x=identity.x,
+        y=identity.y,
+        width=width,
+        height=height,
+        visible=identity.visible,
+        z_index=identity.z_index,
+        scene_order=identity.scene_order,
+        animation=animation,
+    )
 
 
 def load_direct_runtime_render_nodes(
     package: Path,
 ) -> tuple[RuntimeRenderNode, ...]:
-    """Build unified render nodes with direct scene identity.
-
-    The static ACE loader import is local to avoid a circular import through
-    the backend package's builder export.
-    """
-    from g2a.backend.ace.runtime_scene import load_runtime_scene
-
+    """Assemble complete render nodes without legacy runtime matching."""
     package = package.expanduser().resolve()
     identities = load_scene_render_identities(package)
 
-    static_scene = load_runtime_scene(package)
-    animated_sprites = load_runtime_animated_sprites(package)
-    used_static: set[int] = set()
-    result: list[RuntimeRenderNode] = []
+    if not identities:
+        return ()
 
+    registry = load_runtime_asset_registry(package)
+    bindings = load_scene_asset_bindings(
+        package,
+        registry=registry,
+    )
+
+    result: list[RuntimeRenderNode] = []
     for identity in identities:
         if identity.kind is RenderNodeKind.SPRITE:
-            sprite = _match_static(
-                identity,
-                static_scene.sprites,
-                used_static,
-            )
             result.append(
-                RuntimeRenderNode(
-                    node_id=identity.node_id,
-                    name=identity.name,
-                    kind=identity.kind,
-                    x=identity.x,
-                    y=identity.y,
-                    width=sprite.width,
-                    height=sprite.height,
-                    visible=identity.visible,
-                    z_index=identity.z_index,
-                    scene_order=identity.scene_order,
-                    texture_id=sprite.texture_id,
+                _static_node(
+                    package,
+                    identity,
+                    registry,
+                    bindings,
                 )
             )
         else:
-            sprite = _match_animated(
-                identity,
-                animated_sprites,
-            )
             result.append(
-                RuntimeRenderNode(
-                    node_id=identity.node_id,
-                    name=identity.name,
-                    kind=identity.kind,
-                    x=identity.x,
-                    y=identity.y,
-                    width=sprite.width,
-                    height=sprite.height,
-                    visible=identity.visible,
-                    z_index=identity.z_index,
-                    scene_order=identity.scene_order,
-                    animation=sprite.animation,
+                _animated_node(
+                    package,
+                    identity,
+                    registry,
+                    bindings,
                 )
             )
 

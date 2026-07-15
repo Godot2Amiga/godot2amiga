@@ -5,35 +5,29 @@ from pathlib import Path
 BUILDER = Path("src/g2a/backend/ace/builder.py")
 
 
-def builder_source() -> str:
+def source() -> str:
     return BUILDER.read_text(encoding="utf-8")
 
 
-def test_unified_loader_is_public() -> None:
-    from g2a.runtime_render_scene import (
-        load_runtime_render_nodes,
+def test_direct_loader_is_public() -> None:
+    from g2a.runtime_direct_scene import (
+        load_direct_runtime_render_nodes,
     )
 
-    assert callable(load_runtime_render_nodes)
+    assert callable(load_direct_runtime_render_nodes)
 
 
-def test_builder_unified_loader_migration() -> None:
-    source = builder_source()
+def test_builder_uses_direct_loader() -> None:
+    text = source()
 
-    assert "load_runtime_render_nodes" in source
-    assert "render_nodes = load_runtime_render_nodes(" in source
-
-
-def test_builder_uses_unified_node_kinds_after_migration() -> None:
-    source = builder_source()
-
-    assert "node.is_animated" in source
-    assert "node.is_static" in source
+    assert "load_direct_runtime_render_nodes" in text
+    assert "node.is_animated" in text
+    assert "node.is_static" in text
 
 
 def test_builder_keeps_existing_codegen_paths() -> None:
-    source = builder_source()
+    text = source()
 
-    assert "render_animated_scene_main_c" in source
-    assert "render_runtime_scene_main_c" in source
-    assert "render_main_c" in source
+    assert "render_animated_scene_main_c" in text
+    assert "render_runtime_scene_main_c" in text
+    assert "render_main_c" in text
