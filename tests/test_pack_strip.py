@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from g2a.pack import EXIT_CONFIGURATION_ERROR, EXIT_OK, package_project
 from tests.test_pack import (
     FakeRunner,
     write_build_info,
     write_compile_info,
     write_m68k_elf,
 )
-
-from g2a.pack import EXIT_CONFIGURATION_ERROR, EXIT_OK, package_project
 
 
 def test_strip_requires_tool(tmp_path: Path) -> None:
