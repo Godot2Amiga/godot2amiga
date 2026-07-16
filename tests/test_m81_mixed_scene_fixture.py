@@ -13,14 +13,17 @@ SCENE = FIXTURE_ROOT / "main.tscn"
 
 def generate_mixed_package(tmp_path: Path) -> Path:
     output = tmp_path / "mixed-scene.g2a"
-    assert generate_tscn_package(
-        TscnPackageConfig(
-            source=SCENE,
-            project_root=FIXTURE_ROOT,
-            output=output,
-            project_name="Mixed Scene Contract",
+    assert (
+        generate_tscn_package(
+            TscnPackageConfig(
+                source=SCENE,
+                project_root=FIXTURE_ROOT,
+                output=output,
+                project_name="Mixed Scene Contract",
+            )
         )
-    ) == EXIT_OK
+        == EXIT_OK
+    )
     return output
 
 
