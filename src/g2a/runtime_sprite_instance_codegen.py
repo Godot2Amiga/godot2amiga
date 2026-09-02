@@ -44,6 +44,7 @@ def sprite_instance_spec(
     width: int,
     height: int,
     visible: bool = True,
+    symbol: str | None = None,
 ) -> RuntimeSpriteInstanceSpec:
     if width <= 0:
         raise ValueError("sprite width must be greater than zero")
@@ -55,7 +56,7 @@ def sprite_instance_spec(
 
     return RuntimeSpriteInstanceSpec(
         name=sprite.name,
-        symbol=f"g2a_sprite_{_c_identifier(sprite.name)}",
+        symbol=symbol or f"g2a_sprite_{_c_identifier(sprite.name)}",
         x=x,
         y=y,
         width=width,
@@ -104,6 +105,7 @@ def render_sprite_instance_declaration(
     width: int,
     height: int,
     visible: bool = True,
+    symbol: str | None = None,
 ) -> str:
     spec = sprite_instance_spec(
         sprite,
@@ -112,6 +114,7 @@ def render_sprite_instance_declaration(
         width=width,
         height=height,
         visible=visible,
+        symbol=symbol,
     )
     state = initial_playback_state(sprite)
     clip_identifier = _c_identifier(state.clip_name)

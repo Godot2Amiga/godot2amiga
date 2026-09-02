@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from g2a.backend.ace.blit_plan import plan_sprite_blit
 from g2a.runtime_animated_scene import RuntimeAnimatedSceneSprite
 from g2a.runtime_animation_bitmap_codegen import (
     render_bitmap_pointer_initialization,
@@ -30,6 +30,9 @@ class AnimatedRuntimeUnit:
     tick_loop: str
     render_loop: str
     cleanup: str
+
+
+AnimatedSpriteSymbol = Callable[[RuntimeAnimatedSceneSprite], str]
 
 
 def _bitmap_variable(texture_id: str) -> str:
@@ -112,6 +115,8 @@ def render_animated_declarations(
     sprites: tuple[RuntimeAnimatedSceneSprite, ...],
     *,
     video_hz: float = 50.0,
+    include_bitmap_declarations: bool = True,
+    sprite_symbol: AnimatedSpriteSymbol | None = None,
 ) -> str:
     if not sprites:
         return ""
@@ -119,8 +124,9 @@ def render_animated_declarations(
     parts = [
         render_animation_runtime_types(),
         render_sprite_instance_types(),
-        render_bitmap_declarations(sprites),
     ]
+    if include_bitmap_declarations:
+        parts.append(render_bitmap_declarations(sprites))
     specs = []
 
     for sprite in sprites:
@@ -141,6 +147,7 @@ def render_animated_declarations(
                 width=sprite.width,
                 height=sprite.height,
                 visible=sprite.visible,
+                symbol=sprite_symbol(sprite) if sprite_symbol else None,
             )
         )
         specs.append(
@@ -151,6 +158,7 @@ def render_animated_declarations(
                 width=sprite.width,
                 height=sprite.height,
                 visible=sprite.visible,
+                symbol=sprite_symbol(sprite) if sprite_symbol else None,
             )
         )
 
@@ -158,9 +166,39 @@ def render_animated_declarations(
     return "\n\n".join(part for part in parts if part)
 
 
+def render_bitmap_pointer_initializations(
+    sprites: tuple[RuntimeAnimatedSceneSprite, ...],
+) -> str:
+    """Bind animation frame slots to bitmaps loaded by another owner."""
+    return "\n\n".join(render_bitmap_pointer_initialization(sprite.animation) for sprite in sprites)
+
+
+def render_animated_runtime_state_unit(
+    sprites: tuple[RuntimeAnimatedSceneSprite, ...],
+    *,
+    video_hz: float = 50.0,
+    sprite_symbol: AnimatedSpriteSymbol | None = None,
+) -> AnimatedRuntimeUnit:
+    """Render animation state while leaving resources and frame work external."""
+    return AnimatedRuntimeUnit(
+        declarations=render_animated_declarations(
+            sprites,
+            video_hz=video_hz,
+            include_bitmap_declarations=False,
+            sprite_symbol=sprite_symbol,
+        ),
+        initialization=render_bitmap_pointer_initializations(sprites),
+        tick_loop="",
+        render_loop="",
+        cleanup="",
+    )
+
+
 def render_animated_blits(
     sprites: tuple[RuntimeAnimatedSceneSprite, ...],
 ) -> str:
+    from g2a.backend.ace.blit_plan import plan_sprite_blit
+
     blocks: list[str] = []
 
     for sprite in sprites:
@@ -220,10 +258,13 @@ def render_animated_runtime_unit(
 
 __all__ = [
     "AnimatedRuntimeUnit",
+    "AnimatedSpriteSymbol",
     "render_animated_blits",
     "render_animated_declarations",
     "render_animated_runtime_unit",
+    "render_animated_runtime_state_unit",
     "render_bitmap_cleanup",
     "render_bitmap_declarations",
     "render_bitmap_loads",
+    "render_bitmap_pointer_initializations",
 ]
