@@ -21,13 +21,15 @@ def test_builder_uses_direct_loader() -> None:
     text = source()
 
     assert "load_direct_runtime_render_nodes" in text
-    assert "node.is_animated" in text
-    assert "node.is_static" in text
+    assert "resolve_ace_main_platform_config" in text
+    assert "node.is_animated" not in text
+    assert "node.is_static" not in text
 
 
-def test_builder_keeps_existing_codegen_paths() -> None:
+def test_builder_uses_one_unified_codegen_path() -> None:
     text = source()
 
-    assert "render_animated_scene_main_c" in text
-    assert "render_runtime_scene_main_c" in text
-    assert "render_main_c" in text
+    assert "render_unified_package_main_c" in text
+    assert "render_animated_scene_main_c" not in text
+    assert "render_runtime_scene_main_c" not in text
+    assert "render_main_c" not in text

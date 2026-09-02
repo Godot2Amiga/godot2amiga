@@ -43,9 +43,11 @@ def test_empty_scene_needs_no_asset_manifest(
     assert load_direct_runtime_render_nodes(package) == ()
 
 
-def test_builder_selection_uses_direct_nodes() -> None:
+def test_builder_unified_path_uses_direct_nodes() -> None:
     source = Path("src/g2a/backend/ace/builder.py").read_text(encoding="utf-8")
 
     assert "load_direct_runtime_render_nodes" in source
-    assert "has_animated = any(" in source
-    assert "has_static = any(" in source
+    assert "resolve_ace_main_platform_config" in source
+    assert "render_unified_package_main_c" in source
+    assert "has_animated = any(" not in source
+    assert "has_static = any(" not in source

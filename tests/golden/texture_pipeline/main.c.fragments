@@ -1,7 +1,7 @@
 paletteLoadFromPath(
         "data/palettes/main.plt",
         s_pViewport->pPalette,
-        2
+        4
     );
 ---
 s_pBitmap_test_logo = bitmapCreateFromPath(

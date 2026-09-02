@@ -7,22 +7,16 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from g2a.ace_unified_main import render_unified_package_main_c
 from g2a.backend.ace.config import AceBuildConfig
 from g2a.backend.ace.metadata import build_identity
-from g2a.backend.ace.runtime_scene import load_runtime_scene
-from g2a.backend.ace.runtime_scene_codegen import (
-    render_runtime_scene_main_c,
-)
 from g2a.backend.ace.templates import (
     render_cmake,
     render_generated_header,
     render_generated_source,
-    render_main_c,
     render_makefile,
 )
 from g2a.project import load_package
-from g2a.runtime_animated_main_codegen import render_animated_scene_main_c
-from g2a.runtime_animated_scene import load_runtime_animated_sprites
 from g2a.runtime_direct_scene import load_direct_runtime_render_nodes
 
 EXIT_OK = 0
@@ -58,8 +52,19 @@ def _prepare_output(config: AceBuildConfig) -> int:
     return EXIT_OK
 
 
+def _video_hz(export_profile: dict[str, Any]) -> float:
+    video_standard = export_profile.get("video_standard")
+    if video_standard == "PAL":
+        return 50.0
+    if video_standard == "NTSC":
+        return 60.0
+    raise ValueError(f"unsupported video standard: {video_standard!r}")
+
+
 def generate_ace_project(config: AceBuildConfig) -> int:
     """Generate deterministic ACE-oriented backend output."""
+    from g2a.ace_platform_resolver import resolve_ace_main_platform_config
+
     prepare_result = _prepare_output(config)
     if prepare_result != EXIT_OK:
         return prepare_result
@@ -70,24 +75,18 @@ def generate_ace_project(config: AceBuildConfig) -> int:
     identity = build_identity(project_id, project_name)
     output_path = config.resolved_output_path
 
-    runtime_scene = load_runtime_scene(config.resolved_package_path)
-    animated_sprites = load_runtime_animated_sprites(config.resolved_package_path)
     render_nodes = load_direct_runtime_render_nodes(config.resolved_package_path)
+    platform = resolve_ace_main_platform_config(
+        config.resolved_package_path,
+        render_nodes,
+    )
+    main_source = render_unified_package_main_c(
+        config.resolved_package_path,
+        platform=platform,
+        video_hz=_video_hz(package.export_profile),
+    )
 
-    has_animated = any(node.is_animated for node in render_nodes)
-    has_static = any(node.is_static for node in render_nodes)
-
-    if has_animated:
-        main_source = render_animated_scene_main_c(
-            config.resolved_package_path,
-            animated_sprites,
-        )
-    elif has_static:
-        main_source = render_runtime_scene_main_c(runtime_scene)
-    else:
-        main_source = render_main_c(project_name)
-
-    _write_text(output_path / "src" / "main.c", main_source)
+    _write_text(output_path / "src" / "main.c", main_source.source)
     _write_text(
         output_path / "src" / "generated_project.c",
         render_generated_source(),

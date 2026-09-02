@@ -21,8 +21,10 @@ def test_builder_no_longer_uses_compatibility_loader() -> None:
     assert "load_runtime_render_nodes" not in source()
 
 
-def test_builder_preserves_codegen_paths() -> None:
+def test_builder_uses_unified_codegen_path() -> None:
     text = source()
 
-    assert "render_animated_scene_main_c" in text
-    assert "render_runtime_scene_main_c" in text
+    assert "resolve_ace_main_platform_config" in text
+    assert "render_unified_package_main_c" in text
+    assert "render_animated_scene_main_c" not in text
+    assert "render_runtime_scene_main_c" not in text

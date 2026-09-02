@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "palettes": [
+    {
+      "id": "display",
+      "source": "assets/display.gpl",
+      "output": "palettes/display.plt",
+      "convert_colors": false
+    }
+  ],
+  "bitmaps": []
+}

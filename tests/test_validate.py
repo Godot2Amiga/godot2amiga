@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from g2a.validate import validate_package
@@ -25,6 +26,10 @@ def test_optional_directories_are_not_required(tmp_path: Path) -> None:
     import shutil
 
     shutil.copytree(source, package)
+    profile_path = package / "export_profile.json"
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    profile.pop("display")
+    profile_path.write_text(json.dumps(profile), encoding="utf-8")
 
     for directory_name in ("assets", "scripts", "resources", "metadata", "diagnostics"):
         directory = package / directory_name

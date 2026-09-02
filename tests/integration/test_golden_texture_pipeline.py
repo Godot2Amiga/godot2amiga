@@ -7,6 +7,7 @@ from g2a import build as build_command
 from g2a.integration_snapshot import (
     assert_json_matches_golden,
 )
+from g2a.package_display import PackageDisplayContract
 from g2a.runtime_asset_packaging import stage_runtime_assets
 from g2a.tscn_package import (
     EXIT_OK,
@@ -20,7 +21,7 @@ SCENE = FIXTURE_ROOT / "main.tscn"
 GOLDEN = Path("tests/golden/texture_pipeline")
 
 
-def generate_package(tmp_path: Path) -> Path:
+def generate_package(tmp_path: Path, *, with_display: bool = False) -> Path:
     package = tmp_path / "texture-demo.g2a"
 
     assert (
@@ -30,6 +31,14 @@ def generate_package(tmp_path: Path) -> Path:
                 project_root=FIXTURE_ROOT,
                 output=package,
                 project_name="Texture Scene",
+                display=PackageDisplayContract(
+                    palette="main",
+                    bitplane_depth=2,
+                    interleaved=True,
+                    double_buffered=False,
+                )
+                if with_display
+                else None,
             )
         )
         == EXIT_OK
@@ -123,7 +132,7 @@ def test_generated_palette_matches_golden(
 def test_runtime_staging_and_codegen_contract(
     tmp_path: Path,
 ) -> None:
-    package = generate_package(tmp_path)
+    package = generate_package(tmp_path, with_display=True)
     converted = tmp_path / "converted"
     ace_project = tmp_path / "ace-project"
 
