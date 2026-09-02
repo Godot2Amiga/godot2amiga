@@ -73,8 +73,8 @@ def test_plan_preserves_dimensions_and_positions(tmp_path: Path) -> None:
     assert (by_id["backdrop"].x, by_id["backdrop"].y) == (0, 0)
     assert (by_id["hero"].x, by_id["hero"].y) == (0, 0)
     assert (by_id["backdrop"].width, by_id["backdrop"].height) == (
-        16,
-        16,
+        32,
+        32,
     )
     assert (by_id["hero"].width, by_id["hero"].height) == (16, 16)
 
