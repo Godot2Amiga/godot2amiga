@@ -66,4 +66,10 @@ the emulator.
 - `--fs-uae PATH`: use a specific FS-UAE executable
 - `--amiga-model MODEL`: select the FS-UAE model, defaulting to `A500`
 
+For the supported Bebbo `m68k-amigaos` toolchain and pinned ACE revision,
+generated projects automatically select the Amiga NDK no-inline header mode
+with `_NO_INLINE`. Users do not need to set `CFLAGS=-D_NO_INLINE`; this
+compatibility requirement was confirmed by the M8.2 compile and runtime
+qualification.
+
 The explicit Kickstart path wins over `G2A_KICKSTART_ROM`.

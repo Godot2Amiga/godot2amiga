@@ -70,6 +70,12 @@ add_executable(${{PROJECT_NAME}}
     src/generated_project.c
 )
 
+if(TOOLCHAIN_PREFIX STREQUAL "m68k-amigaos")
+    # Select the Bebbo/Amiga NDK no-inline header mode required by pinned ACE.
+    target_compile_definitions(ace PRIVATE _NO_INLINE)
+    target_compile_definitions(${{PROJECT_NAME}} PRIVATE _NO_INLINE)
+endif()
+
 target_include_directories(${{PROJECT_NAME}} PRIVATE include)
 target_link_libraries(${{PROJECT_NAME}} PRIVATE ace)
 
