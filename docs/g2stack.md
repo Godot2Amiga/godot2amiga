@@ -73,3 +73,6 @@ compatibility requirement was confirmed by the M8.2 compile and runtime
 qualification.
 
 The explicit Kickstart path wins over `G2A_KICKSTART_ROM`.
+
+The repeatable pinned-ACE mixed-scene runtime procedure is documented in
+[M8.2 runtime qualification](M8_2_RUNTIME_QUALIFICATION.md).
