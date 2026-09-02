@@ -107,7 +107,7 @@ nodes are shared with the PR7 adapter and therefore are not legacy-only.
 | `render_visual_smoke_test_main_c` | only `render_main_c` plus tests | not re-exported | M4.2/M4.3/M4.4/ACE smoke tests | No | LEGACY-TEST-ONLY | retain until smoke-test suite is retired |
 | `render_runtime_scene_main_c` | none | implementation-module `__all__`, not package export | M6.2/M7.4 tests and example tests | No | LEGACY-TEST-ONLY | retire static wrapper after compatibility review |
 | `RuntimeScene`, `RuntimeSprite`, `load_runtime_scene` | none in supported builder | implementation-module exports | M6/M7 tests | No for main generation | LEGACY-TEST-ONLY | remove only with all historical API/tests migrated |
-| `render_animated_scene_main_c` | none | implementation-module `__all__`, not package export | M7.6 integration test | No | LEGACY-TEST-ONLY | first deletion candidate, preserve shared code |
+| `render_animated_scene_main_c` (`runtime_animated_main_codegen.py`) | none | implementation-module `__all__`, not package export | M7.6 integration test | No | RETIRED (M8.3b) | removed with its generator-only module/test |
 | `RuntimeAnimatedSceneSprite` | adapter construction/type boundary | implementation-module export | M7/M8 adapter tests | Yes, as adapter input/output model | SHARED | retain |
 | `load_runtime_animated_sprites` | none in supported builder | implementation-module export | M7 animated-scene tests | No | LEGACY-TEST-ONLY | remove with legacy loader review |
 | `runtime_render_scene.load_runtime_render_nodes` | none found | implementation function only | no direct callers found; historical docs | No (builder uses direct loader) | UNCERTAIN | verify historical/documented compatibility before removal |
@@ -144,9 +144,8 @@ does not change imports or attempt that cleanup.
 
 ## Safe retirement plan
 
-1. **M8.3b:** remove the unused `render_animated_scene_main_c` wrapper and
-   its generator-specific integration test only after checking any external
-   consumers of the implementation-module import. Keep
+1. **M8.3b (this PR):** remove the unused `render_animated_scene_main_c`
+   wrapper, its generator-only module, and its integration test. Keep
    `runtime_animated_codegen`, `runtime_animation_codegen`, bitmap codegen,
    sprite-instance codegen, and the adapter.
 2. **M8.3c:** remove `render_runtime_scene_main_c` and its isolated static
@@ -168,9 +167,10 @@ The final legacy-retirement milestone should always rerun M8.2b visibly.
 
 The supported ACE builder has one main-generation path: the unified path.
 No other supported production CLI, g2stack command, or qualification root
-selects a legacy generator. The three requested legacy main generators are
-therefore test-only from repository evidence, with undocumented direct
-module imports as the only API-compatibility caveat.
+selects a legacy generator. After M8.3b the animated legacy main surface is
+retired; the static and generic surfaces remain test-only compatibility
+surfaces, with undocumented direct module imports as the API-compatibility
+caveat.
 
 `runtime_render_scene.load_runtime_render_nodes` has no code or test caller,
 but its historical documentation references make its external compatibility
