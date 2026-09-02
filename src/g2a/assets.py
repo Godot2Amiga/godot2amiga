@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from g2a.backend.ace.dependency import AceRevisionError, validate_ace_revision
+
 EXIT_OK = 0
 EXIT_INVALID_MANIFEST = 1
 EXIT_CONFIGURATION_ERROR = 2
@@ -278,7 +280,9 @@ def resolve_ace_root(
 
 def resolve_tools(ace_root: Path) -> AceAssetTools:
     """Resolve native ACE host conversion tools."""
-    tools_bin = ace_root.expanduser().resolve() / "tools" / "bin"
+    resolved_root = ace_root.expanduser().resolve()
+    validate_ace_revision(resolved_root)
+    tools_bin = resolved_root / "tools" / "bin"
     palette_conv = tools_bin / "palette_conv"
     bitmap_conv = tools_bin / "bitmap_conv"
 
@@ -370,7 +374,7 @@ def convert_assets(
 
     try:
         tools = resolve_tools(resolved_ace_root)
-    except FileNotFoundError:
+    except (AceRevisionError, FileNotFoundError):
         return EXIT_CONFIGURATION_ERROR
 
     if output.exists():

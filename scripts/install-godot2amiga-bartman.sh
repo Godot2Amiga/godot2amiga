@@ -37,7 +37,7 @@ clone_or_update() {
   fi
 }
 
-clone_or_update https://github.com/AmigaPorts/ACE.git "$ACE_ROOT"
+"$(dirname "$0")/checkout-supported-ace.sh" "$ACE_ROOT"
 clone_or_update \
   https://github.com/AmigaPorts/AmigaCMakeCrossToolchains.git \
   "$CMAKE_TOOLCHAINS"

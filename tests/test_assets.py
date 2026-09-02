@@ -19,6 +19,11 @@ from g2a.assets import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _accept_fixture_ace_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("g2a.assets.validate_ace_revision", lambda _root: None)
+
+
 def write_package(tmp_path: Path) -> Path:
     package = tmp_path / "demo.g2a"
     assets = package / "assets"

@@ -20,6 +20,11 @@ from g2a.tscn_package import EXIT_OK, TscnPackageConfig, generate_tscn_package
 FIXTURES = Path("tests/fixtures/godot-local")
 
 
+@pytest.fixture(autouse=True)
+def _accept_fixture_ace_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("g2a.assets.validate_ace_revision", lambda _root: None)
+
+
 def _palette(tmp_path: Path, asset_id: str = "display") -> StandalonePaletteSource:
     tmp_path.mkdir(parents=True, exist_ok=True)
     source = tmp_path / "standalone-source.gpl"

@@ -12,6 +12,7 @@ from typing import Any
 
 from rich.console import Console
 
+from g2a.backend.ace.dependency import AceRevisionError, validate_ace_revision
 from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN, AceToolchain
 from g2a.config import ConfigurationError, resolve_compile_configuration
 
@@ -97,6 +98,12 @@ def validate_ace_root(ace_root: Path) -> list[str]:
 
     if not (ace_root / "include" / "ace").is_dir():
         errors.append("ACE root does not contain include/ace")
+
+    if not errors:
+        try:
+            validate_ace_revision(ace_root)
+        except AceRevisionError as error:
+            errors.append(str(error))
 
     return errors
 

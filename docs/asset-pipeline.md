@@ -17,6 +17,12 @@ $G2A_ACE_ROOT/tools/bin/bitmap_conv
 This intentionally avoids implementing a second Amiga bitmap encoder in
 Python.
 
+Godot2Amiga supports the official `AmigaPorts/ACE` repository at commit
+`dc0674c2d2cf328386574b9ac71bbe6747db470e`. Managed installation checks out
+that exact revision for reproducible `.plt` v2 conversion and runtime loading.
+Asset conversion and compilation must use clean ACE checkouts at this revision;
+custom ACE revisions are outside the verified toolchain contract.
+
 ## Manifest
 
 A `.g2a` package may contain `assets/assets.json`:

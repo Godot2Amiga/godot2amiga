@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from g2a.backend.ace.toolchain import DEFAULT_ACE_TOOLCHAIN
 from g2a.build import generate_project
 from g2a.compile import (
@@ -20,6 +22,11 @@ from g2a.compile import (
 
 ROOT = Path(__file__).resolve().parents[1]
 VALID_PACKAGE = ROOT / "tests/fixtures/valid/minimal.g2a"
+
+
+@pytest.fixture(autouse=True)
+def _accept_fixture_ace_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("g2a.compile.validate_ace_revision", lambda _root: None)
 
 
 class FakeRunner:
