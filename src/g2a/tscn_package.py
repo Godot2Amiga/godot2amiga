@@ -11,6 +11,7 @@ from typing import Any
 from g2a.animated_scene_contract import animated_scene_nodes
 from g2a.gimp_palette import StandalonePaletteSource, generate_m5_assets
 from g2a.godot_tscn import parse_tscn, to_g2a_scene_document
+from g2a.package_display import PackageDisplayContract, load_package_display_contract
 from g2a.tscn_assets import import_texture_assets
 
 FORMAT_VERSION = "0.1.0"
@@ -28,6 +29,7 @@ class TscnPackageConfig:
     project_id: str | None = None
     project_root: Path | None = None
     standalone_palettes: tuple[StandalonePaletteSource, ...] = ()
+    display: PackageDisplayContract | None = None
     force: bool = False
 
     @property
@@ -215,6 +217,8 @@ def generate_tscn_package(config: TscnPackageConfig) -> int:
         "fast_ram_kib": 0,
         "runtime": "ACE",
     }
+    if config.display is not None:
+        export_profile["display"] = config.display.to_mapping()
 
     diagnostics = {
         "$schema": ("https://godot2amiga.org/schemas/g2a/diagnostics.schema.json"),
@@ -245,6 +249,8 @@ def generate_tscn_package(config: TscnPackageConfig) -> int:
         output / "assets/assets.json",
         asset_manifest,
     )
+    if config.display is not None:
+        load_package_display_contract(output)
     _write_json(output / scene_path, scene_document)
     _write_json(
         output / "diagnostics/diagnostics.json",

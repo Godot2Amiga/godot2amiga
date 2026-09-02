@@ -11,6 +11,7 @@ from typing import Any
 
 from rich.console import Console
 
+from g2a.package_display import PackageDisplayError, load_package_display_contract
 from g2a.schema import validate_document
 
 SUPPORTED_FORMAT_MAJOR = 0
@@ -151,6 +152,13 @@ def validate_semantics(
                         f"main_scene points to missing file: {main_scene}",
                     )
                 )
+
+    export_profile = documents.get("export_profile.json")
+    if isinstance(export_profile, dict) and "display" in export_profile:
+        try:
+            load_package_display_contract(package)
+        except PackageDisplayError as error:
+            issues.append(ValidationIssue("export_profile.json", str(error)))
 
     seen_scene_ids: dict[str, str] = {}
     seen_node_ids: dict[str, str] = {}

@@ -26,6 +26,25 @@
     "video_standard": { "enum": ["PAL", "NTSC"] },
     "chip_ram_kib": { "type": "integer", "minimum": 256 },
     "fast_ram_kib": { "type": "integer", "minimum": 0 },
-    "runtime": { "enum": ["ACE"] }
+    "runtime": { "enum": ["ACE"] },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["palette", "bitplane_depth", "interleaved", "double_buffered"],
+      "properties": {
+        "palette": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "bitplane_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "interleaved": { "type": "boolean" },
+        "double_buffered": { "type": "boolean" }
+      }
+    }
   }
 }
