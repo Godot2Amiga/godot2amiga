@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from g2a.animated_scene_contract import animated_scene_nodes
-from g2a.gimp_palette import generate_m5_assets
+from g2a.gimp_palette import StandalonePaletteSource, generate_m5_assets
 from g2a.godot_tscn import parse_tscn, to_g2a_scene_document
 from g2a.tscn_assets import import_texture_assets
 
@@ -27,6 +27,7 @@ class TscnPackageConfig:
     project_name: str | None = None
     project_id: str | None = None
     project_root: Path | None = None
+    standalone_palettes: tuple[StandalonePaletteSource, ...] = ()
     force: bool = False
 
     @property
@@ -238,6 +239,7 @@ def generate_tscn_package(config: TscnPackageConfig) -> int:
     _, asset_manifest = generate_m5_assets(
         imported_textures,
         package_root=output,
+        standalone_palettes=config.standalone_palettes,
     )
     _write_json(
         output / "assets/assets.json",

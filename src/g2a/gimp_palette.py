@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,68 @@ class GeneratedPalette:
     colors: tuple[OcsColor, ...]
     has_transparency: bool
     minimum_bpp: int
+
+
+class StandalonePaletteSourceError(ValueError):
+    """Raised when a standalone package palette source is invalid."""
+
+
+@dataclass(frozen=True)
+class StandalonePaletteSource:
+    """A logical palette ID and package-external editable GPL source."""
+
+    asset_id: str
+    source_path: Path
+
+
+def _validate_asset_id(asset_id: str) -> None:
+    if not asset_id:
+        raise StandalonePaletteSourceError("palette asset id must be non-empty")
+    if not asset_id.replace("_", "").replace("-", "").isalnum():
+        raise StandalonePaletteSourceError(
+            "palette asset id may contain letters, numbers, '_' and '-' only"
+        )
+
+
+def _standalone_palette_entries(
+    palettes: tuple[StandalonePaletteSource, ...],
+    *,
+    package_root: Path,
+    reserved_ids: set[str],
+) -> list[dict]:
+    entries: list[dict] = []
+    seen = set(reserved_ids)
+
+    for palette in palettes:
+        _validate_asset_id(palette.asset_id)
+        if palette.asset_id in seen:
+            raise StandalonePaletteSourceError(
+                f"duplicate or conflicting asset id: {palette.asset_id}"
+            )
+        seen.add(palette.asset_id)
+
+        source = palette.source_path.expanduser().resolve()
+        if not source.is_file():
+            raise StandalonePaletteSourceError(f"palette source does not exist: {source}")
+        if source.suffix.lower() != ".gpl":
+            raise StandalonePaletteSourceError(
+                f"standalone palette source must use the .gpl extension: {source}"
+            )
+
+        relative = Path("assets") / f"{palette.asset_id}.gpl"
+        destination = package_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        entries.append(
+            {
+                "id": palette.asset_id,
+                "source": relative.as_posix(),
+                "output": f"palettes/{palette.asset_id}.plt",
+                "convert_colors": False,
+            }
+        )
+
+    return entries
 
 
 def _palette_entries(
@@ -91,8 +154,18 @@ def generate_m5_assets(
     package_root: Path,
     palette_id: str = "main",
     palette_name: str = "Godot2Amiga Main",
+    standalone_palettes: tuple[StandalonePaletteSource, ...] = (),
 ) -> tuple[GeneratedPalette, dict]:
     """Materialize editable sources and the existing M5 manifest."""
+    reserved_ids = {texture.asset_id for texture in textures}
+    if textures:
+        reserved_ids.add(palette_id)
+    palette_entries = _standalone_palette_entries(
+        standalone_palettes,
+        package_root=package_root,
+        reserved_ids=reserved_ids,
+    )
+
     if not textures:
         return (
             GeneratedPalette(
@@ -104,7 +177,7 @@ def generate_m5_assets(
             ),
             {
                 "version": 1,
-                "palettes": [],
+                "palettes": palette_entries,
                 "bitmaps": [],
             },
         )
@@ -154,7 +227,8 @@ def generate_m5_assets(
                 "source": palette_relative.as_posix(),
                 "output": f"palettes/{palette_id}.plt",
                 "convert_colors": False,
-            }
+            },
+            *palette_entries,
         ],
         "bitmaps": bitmaps,
     }
@@ -171,6 +245,8 @@ def generate_m5_assets(
 
 __all__ = [
     "GeneratedPalette",
+    "StandalonePaletteSource",
+    "StandalonePaletteSourceError",
     "generate_m5_assets",
     "render_gimp_palette",
 ]
