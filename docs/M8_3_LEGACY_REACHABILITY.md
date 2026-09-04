@@ -181,3 +181,22 @@ are shared by PR7 and direct-runtime adapters.
 
 Generated C, package/display/asset formats, ACE pin, builder behavior, and
 the M8.2b workflow are unchanged by this inventory.
+
+## M8.3c post-cleanup qualification
+
+At `827eeea90e649e50c2259550e5256f6b7cf58d8c`, M8.3b's deletion was
+requalified on `main`. The full host suite passes (`505 passed`), Ruff and
+repository hygiene pass, and the focused unified/shared runtime set passes
+(`91 passed`). A fresh M8.2b mechanical run using ACE
+`dc0674c2d2cf328386574b9ac71bbe6747db470e` and Bebbo
+`m68k-amigaos-gcc 6.5.0b 20260807212032` configures, compiles, links, and
+stages the mixed fixture successfully (151,796-byte executable,
+SHA-256 `e3f44dfc8130606d298bc377d1149e517f447bbcfb206c82e5788d41bfcfe9a1`).
+
+The unified builder remains the sole supported `src/main.c` production path.
+`render_animated_scene_main_c` and its generator-only module/test are gone;
+static and generic legacy generators remain for planned later retirement
+work. No shared animation code, package format, generated unified
+C, ACE pin, or M8.2b workflow was changed. The existing M8.2b visible FS-UAE
+run remains the runtime gate; this isolated removal required no new emulator
+run because shared/unified code was untouched.
