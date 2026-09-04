@@ -3,9 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from g2a.backend.ace.runtime_scene import load_runtime_scene
-from g2a.backend.ace.runtime_scene_codegen import (
-    render_runtime_scene_main_c,
-)
 from g2a.build import EXIT_OK, generate_project
 
 EXAMPLE = Path("examples/assets-demo.g2a")
@@ -22,18 +19,6 @@ def test_assets_demo_contains_three_scene_sprites() -> None:
         (232, 120),
         (72, 120),
     ]
-
-
-def test_example_reuses_one_bitmap_for_three_blits() -> None:
-    source = render_runtime_scene_main_c(load_runtime_scene(EXAMPLE))
-
-    assert source.count("bitmapCreateFromPath(") == 1
-    assert source.count("blitCopy(") == 2
-
-    right = source.index("\n        232,\n        120,")
-    left = source.index("\n        72,\n        120,")
-
-    assert right < left
 
 
 def test_example_uses_one_shared_palette() -> None:

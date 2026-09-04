@@ -71,15 +71,11 @@ This is the old generic/smoke main path. It is referenced by
 `tests/test_ace_integration.py` only; `render_main_c` is not imported by the
 builder or exported from `g2a.backend.ace`.
 
-```text
-runtime_scene_codegen.render_runtime_scene_main_c
-  -> RuntimeScene / RuntimeSprite
-  -> blit_plan.plan_sprite_blit
-```
-
-The static legacy renderer is called only by M6/M7 and clipping tests. Its
-models and loader remain useful to those tests and historical APIs, but no
-supported builder path calls it.
+The static legacy renderer was `backend/ace/runtime_scene_codegen.py`,
+calling `RuntimeScene`/`RuntimeSprite` and `blit_plan.plan_sprite_blit`.
+M8.3d removes that generator module and its generator-only tests. The
+`RuntimeScene` models/loader remain for historical tests and compatibility;
+`plan_sprite_blit` remains shared by unified animation codegen.
 
 ```text
 runtime_animated_main_codegen.render_animated_scene_main_c
@@ -105,7 +101,7 @@ nodes are shared with the PR7 adapter and therefore are not legacy-only.
 | `render_animated_runtime_unit` and animation sub-codegen helpers | adapter and runtime codegen | implementation APIs | M7/M8 tests | Yes | SHARED | retain; do not remove with legacy wrapper |
 | `render_main_c` (`backend/ace/templates.py`) | none | not re-exported | `test_ace_integration.py` | No | LEGACY-TEST-ONLY | retire after smoke compatibility decision |
 | `render_visual_smoke_test_main_c` | only `render_main_c` plus tests | not re-exported | M4.2/M4.3/M4.4/ACE smoke tests | No | LEGACY-TEST-ONLY | retain until smoke-test suite is retired |
-| `render_runtime_scene_main_c` | none | implementation-module `__all__`, not package export | M6.2/M7.4 tests and example tests | No | LEGACY-TEST-ONLY | retire static wrapper after compatibility review |
+| `render_runtime_scene_main_c` (`runtime_scene_codegen.py`) | none | implementation-module `__all__`, not package export | M6.2/M7.4 generator tests (removed M8.3d) | No | RETIRED (M8.3d) | removed with generator-only module/tests |
 | `RuntimeScene`, `RuntimeSprite`, `load_runtime_scene` | none in supported builder | implementation-module exports | M6/M7 tests | No for main generation | LEGACY-TEST-ONLY | remove only with all historical API/tests migrated |
 | `render_animated_scene_main_c` (`runtime_animated_main_codegen.py`) | none | implementation-module `__all__`, not package export | M7.6 integration test | No | RETIRED (M8.3b) | removed with its generator-only module/test |
 | `RuntimeAnimatedSceneSprite` | adapter construction/type boundary | implementation-module export | M7/M8 adapter tests | Yes, as adapter input/output model | SHARED | retain |
@@ -148,11 +144,11 @@ does not change imports or attempt that cleanup.
    wrapper, its generator-only module, and its integration test. Keep
    `runtime_animated_codegen`, `runtime_animation_codegen`, bitmap codegen,
    sprite-instance codegen, and the adapter.
-2. **M8.3c:** remove `render_runtime_scene_main_c` and its isolated static
-   renderer tests after deciding whether the historical `RuntimeScene` API
-   is still supported. Static clipping/planning behavior must remain covered
-   by unified fragment tests.
-3. **M8.3d:** retire `render_main_c`/the visual-smoke wrapper only if the
+2. **M8.3d (this PR):** remove `render_runtime_scene_main_c`, its isolated
+   static renderer module/tests, while retaining `RuntimeScene` models and
+   loader for historical compatibility. Static planning/drawing behavior is
+   covered by unified builder/fragment tests.
+3. **Later:** retire `render_main_c`/the visual-smoke wrapper only if the
    standalone smoke API is formally ended; otherwise classify it as a
    compatibility API and retain or deprecate it explicitly.
 4. **M8.3e:** remove orphaned legacy loaders/models/helpers, one isolated
@@ -167,10 +163,10 @@ The final legacy-retirement milestone should always rerun M8.2b visibly.
 
 The supported ACE builder has one main-generation path: the unified path.
 No other supported production CLI, g2stack command, or qualification root
-selects a legacy generator. After M8.3b the animated legacy main surface is
-retired; the static and generic surfaces remain test-only compatibility
-surfaces, with undocumented direct module imports as the API-compatibility
-caveat.
+selects a legacy generator. After M8.3d the animated and static legacy main
+surfaces are retired; the generic/smoke surface remains a test-only
+compatibility surface, with undocumented direct module imports as the
+API-compatibility caveat.
 
 `runtime_render_scene.load_runtime_render_nodes` has no code or test caller,
 but its historical documentation references make its external compatibility
@@ -194,9 +190,21 @@ stages the mixed fixture successfully (151,796-byte executable,
 SHA-256 `e3f44dfc8130606d298bc377d1149e517f447bbcfb206c82e5788d41bfcfe9a1`).
 
 The unified builder remains the sole supported `src/main.c` production path.
-`render_animated_scene_main_c` and its generator-only module/test are gone;
-static and generic legacy generators remain for planned later retirement
-work. No shared animation code, package format, generated unified
-C, ACE pin, or M8.2b workflow was changed. The existing M8.2b visible FS-UAE
+`render_animated_scene_main_c` and `render_runtime_scene_main_c`, together
+with their generator-only modules/tests, are gone; the generic/smoke legacy
+generator remains for a separate decision. No shared animation code, package
+format, generated unified C, ACE pin, or M8.2b workflow was changed. The existing M8.2b visible FS-UAE
 run remains the runtime gate; this isolated removal required no new emulator
 run because shared/unified code was untouched.
+
+M8.3d additionally qualified static-only coverage through the unified builder
+and removed `runtime_scene_codegen.py`, `test_m62_runtime_scene_codegen.py`,
+and `test_m74b_runtime_clipped_codegen.py`. The static example test retains
+loader/model and unified-builder assertions; static and mixed unified builder
+tests remain the behavioral coverage.
+
+The fresh static qualification used `tests/fixtures/godot-local/texture_scene`
+with display palette `main`, depth 5, interleaved, single-buffered. Pinned
+ACE conversion and Bebbo configure/compile/link/staging passed; the linked
+`main` executable was 151,012 bytes (SHA-256
+`86f3fe412c98da707fa61c143fa2f8dbed31a780ac6e15cbd7c66811c2e8c4f7`).
