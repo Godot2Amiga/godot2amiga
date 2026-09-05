@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from g2a.backend.ace.smoke_test import render_visual_smoke_test_main_c
 from g2a.backend.ace.templates import (
     render_cmake,
     render_generated_header,
-    render_main_c,
 )
 
 
@@ -25,7 +25,7 @@ def test_generated_header_contains_project_metadata() -> None:
 
 
 def test_generated_main_uses_ace_runtime() -> None:
-    main_c = render_main_c("Minimal")
+    main_c = render_visual_smoke_test_main_c()
 
     assert "#include <ace/" in main_c
     assert "systemCreate();" in main_c

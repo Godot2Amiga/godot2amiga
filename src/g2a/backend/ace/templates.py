@@ -14,14 +14,6 @@ def c_string(value: str) -> str:
     )
 
 
-def render_main_c(project_name: str) -> str:
-    from g2a.backend.ace.smoke_test import (
-        render_visual_smoke_test_main_c,
-    )
-
-    return render_visual_smoke_test_main_c()
-
-
 def render_generated_header(project_name: str, project_id: str) -> str:
     escaped_name = c_string(project_name)
     escaped_id = c_string(project_id)

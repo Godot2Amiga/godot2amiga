@@ -19,6 +19,8 @@ tests. The qualified ACE revision remains
   through an intentionally supported production/API path.
 * **LEGACY-TEST-ONLY** — retained for tests or historical compatibility and
   has no supported production caller.
+* **SMOKE-UTILITY** — an explicitly standalone compiler/ACE smoke path,
+  isolated from production scene generation.
 * **DEAD** — no production, public, test, documentation, or example consumer
   was found.
 * **UNCERTAIN** — evidence is insufficient for safe removal.
@@ -63,13 +65,12 @@ static/animated/empty dispatch or legacy fallback.
 ## Legacy call graphs
 
 ```text
-templates.render_main_c
-  -> smoke_test.render_visual_smoke_test_main_c
+smoke_test.render_visual_smoke_test_main_c
 ```
 
-This is the old generic/smoke main path. It is referenced by
-`tests/test_ace_integration.py` only; `render_main_c` is not imported by the
-builder or exported from `g2a.backend.ace`.
+This is an explicit M4.4 smoke utility, not a scene generator. It is
+referenced by smoke/integration tests only; it is not imported by the builder
+or exported from `g2a.backend.ace`.
 
 The static legacy renderer was `backend/ace/runtime_scene_codegen.py`,
 calling `RuntimeScene`/`RuntimeSprite` and `blit_plan.plan_sprite_blit`.
@@ -99,15 +100,14 @@ nodes are shared with the PR7 adapter and therefore are not legacy-only.
 | `build_main_generation_plan`, `render_ace_main_fragments`, `compose_ace_main_c` | unified main | implementation APIs | M8.1 tests | Yes | ACTIVE | retain |
 | `build_ace_animation_runtime_sections` | unified main | implementation API | PR7/PR8 tests | Yes | ACTIVE | retain |
 | `render_animated_runtime_unit` and animation sub-codegen helpers | adapter and runtime codegen | implementation APIs | M7/M8 tests | Yes | SHARED | retain; do not remove with legacy wrapper |
-| `render_main_c` (`backend/ace/templates.py`) | none | not re-exported | `test_ace_integration.py` | No | LEGACY-TEST-ONLY | retire after smoke compatibility decision |
-| `render_visual_smoke_test_main_c` | only `render_main_c` plus tests | not re-exported | M4.2/M4.3/M4.4/ACE smoke tests | No | LEGACY-TEST-ONLY | retain until smoke-test suite is retired |
+| `render_visual_smoke_test_main_c` (`backend/ace/smoke_test.py`) | none | not re-exported | M4.2/M4.3/M4.4/ACE smoke tests | No | SMOKE-UTILITY | retain as explicit standalone ACE/toolchain smoke utility |
 | `render_runtime_scene_main_c` (`runtime_scene_codegen.py`) | none | implementation-module `__all__`, not package export | M6.2/M7.4 generator tests (removed M8.3d) | No | RETIRED (M8.3d) | removed with generator-only module/tests |
 | `RuntimeScene`, `RuntimeSprite`, `load_runtime_scene` | none in supported builder | implementation-module exports | M6/M7 tests | No for main generation | LEGACY-TEST-ONLY | remove only with all historical API/tests migrated |
 | `render_animated_scene_main_c` (`runtime_animated_main_codegen.py`) | none | implementation-module `__all__`, not package export | M7.6 integration test | No | RETIRED (M8.3b) | removed with its generator-only module/test |
 | `RuntimeAnimatedSceneSprite` | adapter construction/type boundary | implementation-module export | M7/M8 adapter tests | Yes, as adapter input/output model | SHARED | retain |
 | `load_runtime_animated_sprites` | none in supported builder | implementation-module export | M7 animated-scene tests | No | LEGACY-TEST-ONLY | remove with legacy loader review |
 | `runtime_render_scene.load_runtime_render_nodes` | none found | implementation function only | no direct callers found; historical docs | No (builder uses direct loader) | UNCERTAIN | verify historical/documented compatibility before removal |
-| `smoke_test.render_visual_smoke_test_main_c` | legacy generic wrapper | implementation function only | smoke tests | No | LEGACY-TEST-ONLY | separate smoke-path decision |
+| `smoke_test.render_visual_smoke_test_main_c` | none (standalone smoke entry point) | implementation function only | M4.2/M4.3/M4.4/ACE smoke tests | No | SMOKE-UTILITY | retain as explicit smoke/toolchain utility |
 | `backend/ace.blit_plan.plan_sprite_blit` | legacy static renderer and unified fragment geometry | implementation API | clipping and fragment tests | Yes | SHARED | retain |
 
 No candidate is re-exported from `src/g2a/__init__.py`; the ACE package
@@ -148,10 +148,10 @@ does not change imports or attempt that cleanup.
    static renderer module/tests, while retaining `RuntimeScene` models and
    loader for historical compatibility. Static planning/drawing behavior is
    covered by unified builder/fragment tests.
-3. **Later:** retire `render_main_c`/the visual-smoke wrapper only if the
-   standalone smoke API is formally ended; otherwise classify it as a
-   compatibility API and retain or deprecate it explicitly.
-4. **M8.3e:** remove orphaned legacy loaders/models/helpers, one isolated
+3. **M8.3e (this PR):** retain `render_visual_smoke_test_main_c` as an
+   explicit standalone smoke utility and remove the misleading `render_main_c`
+   wrapper so no generic production-looking generator name remains.
+4. **Later:** remove orphaned legacy loaders/models/helpers, one isolated
    group at a time, using import/test searches after each deletion.
 
 Each wrapper deletion should run its focused historical tests plus the full
@@ -164,9 +164,9 @@ The final legacy-retirement milestone should always rerun M8.2b visibly.
 The supported ACE builder has one main-generation path: the unified path.
 No other supported production CLI, g2stack command, or qualification root
 selects a legacy generator. After M8.3d the animated and static legacy main
-surfaces are retired; the generic/smoke surface remains a test-only
-compatibility surface, with undocumented direct module imports as the
-API-compatibility caveat.
+surfaces are retired. M8.3e retains only the explicitly named visual smoke
+utility for standalone toolchain/ACE checks; it is not a production
+scene-generation path.
 
 `runtime_render_scene.load_runtime_render_nodes` has no code or test caller,
 but its historical documentation references make its external compatibility
@@ -208,3 +208,22 @@ with display palette `main`, depth 5, interleaved, single-buffered. Pinned
 ACE conversion and Bebbo configure/compile/link/staging passed; the linked
 `main` executable was 151,012 bytes (SHA-256
 `86f3fe412c98da707fa61c143fa2f8dbed31a780ac6e15cbd7c66811c2e8c4f7`).
+
+## M8.3e generic/smoke decision
+
+The old `render_main_c` wrapper in `backend/ace/templates.py` had no
+production, CLI, builder, or public-package caller. It only delegated to
+`render_visual_smoke_test_main_c`, so the wrapper was removed. The explicit
+`backend/ace/smoke_test.py` renderer remains a **SMOKE-UTILITY**: M4.4 smoke,
+ACE integration, and toolchain tests call it directly, and it provides a
+minimal standalone source independent of scene package generation. It cannot
+be selected by the ACE builder and is not an alternative production path.
+
+A fresh pinned-ACE/Bebbo smoke build was performed from that source with the
+standard generated CMake/header scaffolding; configure, compile, link, and
+staging succeeded. The unified static, animated, and mixed tests and the
+M8.2b qualification workflow also remain green.
+
+`runtime_render_scene.load_runtime_render_nodes` remains **UNCERTAIN** rather
+than removed: it has no production caller, but its no-cycle compatibility test
+and historical documentation establish a retained compatibility surface.
