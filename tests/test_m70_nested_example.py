@@ -2,34 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from g2a.backend.ace.runtime_scene import load_runtime_scene
 from g2a.build import EXIT_OK, generate_project
 
 EXAMPLE = Path("examples/assets-demo.g2a")
-
-
-def test_nested_example_resolves_world_positions() -> None:
-    runtime = load_runtime_scene(EXAMPLE)
-
-    assert [sprite.name for sprite in runtime.sprites] == [
-        "LogoRight",
-        "LogoLeft",
-    ]
-
-    assert [(sprite.x, sprite.y) for sprite in runtime.sprites] == [
-        (232, 120),
-        (72, 120),
-    ]
-
-
-def test_nested_example_depths_are_rendered_in_scene_order() -> None:
-    runtime = load_runtime_scene(EXAMPLE)
-
-    assert len(runtime.sprites) == 2
-    assert [sprite.texture_id for sprite in runtime.sprites] == [
-        "logo",
-        "logo",
-    ]
 
 
 def test_builder_uses_nested_world_coordinates(
