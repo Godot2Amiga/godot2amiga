@@ -22,9 +22,9 @@ qualification gate for that cleanup sequence.
 
 - legacy runtime-loader retirement: COMPLETE
 - GitHub CI host regression: PASS
-  - workflow: `CI`
-  - run: `34885289727` / run number `154`
-  - commit: `293e7f5c079d04c7f9eb72316a6313df699b467d`
+  - latest workflow: `CI`
+  - latest run: `34893295936` / run number `156`
+  - commit: `f259ead9f4b9d6fafdaec5eececc85f9a073ab58`
   - Repository validation: PASS
   - Python tools: PASS
     - repository hygiene: PASS
@@ -53,6 +53,33 @@ than silently changing the target:
 
 The purpose is regression qualification after cleanup, not a new platform or
 feature milestone.
+
+## Next executable gate
+
+The remaining qualification requires the local Bebbo/ACE/FS-UAE environment and
+local Kickstart ROM. From the repository checkout at the PR head, run:
+
+```bash
+git fetch origin
+git checkout m8.3m-post-retirement-qualification
+git pull --ff-only
+source ~/.config/godot2amiga/toolchain.env
+uv run python scripts/qualify-m82-runtime.py \
+  --kickstart /path/to/local/kickstart-3.1.rom \
+  --jobs "$(nproc)"
+```
+
+For a mechanical pinned ACE/Bebbo build before launching the emulator, the same
+qualification can be run with `--no-launch`:
+
+```bash
+source ~/.config/godot2amiga/toolchain.env
+uv run python scripts/qualify-m82-runtime.py --no-launch --jobs "$(nproc)"
+```
+
+The build-only result may establish the pinned ACE/Bebbo gate, but visible
+FS-UAE qualification remains pending until the human visual checklist is
+confirmed.
 
 ## Expected verdict
 
