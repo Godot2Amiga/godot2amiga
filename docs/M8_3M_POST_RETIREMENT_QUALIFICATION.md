@@ -21,12 +21,24 @@ qualification gate for that cleanup sequence.
 ## Current status
 
 - legacy runtime-loader retirement: COMPLETE
-- GitHub CI host regression: PENDING
+- GitHub CI host regression: PASS
+  - workflow: `CI`
+  - run: `34885289727` / run number `154`
+  - commit: `293e7f5c079d04c7f9eb72316a6313df699b467d`
+  - Repository validation: PASS
+  - Python tools: PASS
+    - repository hygiene: PASS
+    - Ruff: PASS
+    - full pytest suite: PASS
+    - canonical validate: PASS
+    - canonical dump: PASS
+  - Godot plugin parse/load: PASS
 - pinned ACE/Bebbo build: PENDING
 - visible FS-UAE runtime observation: PENDING
 - final M8.3 cleanup verdict: PENDING
 
-No PASS is claimed until evidence exists for the relevant gate.
+No runtime PASS is claimed until evidence exists for the pinned build and visible
+FS-UAE gates.
 
 ## Runtime baseline to preserve
 
