@@ -2,9 +2,9 @@
 
 ## Scope
 
-M8.3f reviews the remaining pre-unified runtime loader/model surfaces after the
-legacy animated/static main generators and the generic `render_main_c` wrapper
-were retired.
+M8.3f reviewed the remaining pre-unified runtime loader/model surfaces after
+retirement of the legacy main generators. Subsequent M8.3g–M8.3i milestones
+apply the smallest isolated retirements identified by that review.
 
 Current production scene generation remains:
 
@@ -19,97 +19,74 @@ g2a-build / g2stack
 ```
 
 The direct loader has no dependency on the historical static/animated loader
-chain.
+or adapter chain.
 
 ## Reviewed surfaces
 
-| Symbol/module | Current callers | Unified path? | Classification | Action |
-|---|---|---:|---|---|
-| `runtime_direct_scene.load_direct_runtime_render_nodes` | builder/unified path/tests | Yes | ACTIVE | retain |
-| `runtime_animated_scene.RuntimeAnimatedSceneSprite` | animation adapter/codegen/tests | Yes | SHARED | retain |
-| `runtime_animated_scene.load_runtime_animated_sprites` | retired in M8.3h | No | RETIRED | removed |
-| `backend.ace.runtime_scene.load_runtime_scene` | historical static-loader/example tests | No | LEGACY-TEST-ONLY | review separately |
-| `backend.ace.runtime_scene.RuntimeScene` / `RuntimeSprite` | historical static-loader tests/adapters | No production use | COMPATIBILITY | retain until static compatibility review |
-| `runtime_render_scene.load_runtime_render_nodes` | retired in M8.3g | No | RETIRED | removed |
-| `runtime_render_adapter.merge_render_nodes` | compatibility adapter tests | No production use | COMPATIBILITY | review separately |
-| `runtime_render_adapter.static_sprite_to_render_node` | compatibility adapter tests | No production use | COMPATIBILITY | review separately |
-| `runtime_render_adapter.animated_sprite_to_render_node` | adapter tests | No production builder call | COMPATIBILITY | review separately |
-
-## Animated loader findings
-
-Before M8.3h, `load_runtime_animated_sprites()` resolved historical
-`AnimatedSprite2D` package data into `RuntimeAnimatedSceneSprite` objects. It
-had no supported production caller after M8.3g; its remaining repository users
-were the M7 animated-loader tests.
-
-`RuntimeAnimatedSceneSprite` itself is not legacy-only. It remains the model
-used by current animation codegen and the ACE animation runtime adapter, so
-M8.3h keeps that dataclass while removing only the obsolete package loader and
-its loader-specific implementation helpers.
-
-The supported direct loader independently parses animation state, resolves
-asset bindings, validates frame dimensions, and produces `RuntimeRenderNode`
-instances. Supported package-to-main generation therefore does not depend on
-the retired animated loader.
-
-## Static loader findings
-
-`load_runtime_scene()` and the `RuntimeScene`/`RuntimeSprite` models are not
-used by the supported builder. They remain covered by historical
-static-loader/example tests for transforms, visibility, ordering, palette
-association, and runtime metadata.
-
-Equivalent supported semantics exist in direct-loader/unified coverage, but
-that static compatibility surface should be reviewed independently before any
-removal.
+| Symbol/module | Unified path? | Current status | Action |
+|---|---:|---|---|
+| `runtime_direct_scene.load_direct_runtime_render_nodes` | Yes | ACTIVE | retain |
+| `runtime_animated_scene.RuntimeAnimatedSceneSprite` | Yes, via animation codegen/runtime adapter layer | SHARED | retain |
+| `runtime_animated_scene.load_runtime_animated_sprites` | No | RETIRED (M8.3h) | removed |
+| `runtime_render_scene.load_runtime_render_nodes` | No | RETIRED (M8.3g) | removed |
+| `runtime_render_adapter.*` | No | RETIRED (M8.3i) | removed |
+| `backend.ace.runtime_scene.load_runtime_scene` | No | LEGACY-TEST-ONLY | review separately |
+| `backend.ace.runtime_scene.RuntimeScene` / `RuntimeSprite` | No production use | COMPATIBILITY | retain pending static compatibility review |
 
 ## M8.3g — runtime render scene retirement
 
-M8.3g removed `src/g2a/runtime_render_scene.py` and only the obsolete
-no-cycle assertion whose purpose was to prove that compatibility module could
-import through the old eager-backend cycle. The remaining runtime adapter
-compatibility tests were retained.
-
-The supported builder, direct loader, generated C, package/display/asset
-contracts, ACE pin, and M8.2b workflow were unchanged.
+M8.3g removed `src/g2a/runtime_render_scene.py` and the obsolete import-cycle
+assertion whose only purpose was to protect that compatibility module. The
+supported builder/direct-loader path was unchanged.
 
 ## M8.3h — animated loader retirement
 
-M8.3h removes the next isolated legacy loader surface:
+M8.3h removed `load_runtime_animated_sprites()`, its loader-only error,
+JSON/image/traversal helpers, and the two tests that exercised only that
+historical loader. `RuntimeAnimatedSceneSprite` remained because current
+animation codegen still uses it as a shared model.
 
-- removes `load_runtime_animated_sprites()`;
-- removes `AnimatedRuntimeSceneError` and loader-only JSON/image traversal
-  helpers from `runtime_animated_scene.py`;
-- removes `tests/test_m76c2b_animated_runtime_scene.py`;
-- removes `tests/test_m76c2d1_empty_animation_package.py`;
-- retains `RuntimeAnimatedSceneSprite` as the shared animation-codegen model;
-- retains `runtime_animated_codegen`, the ACE animation runtime adapter, and
-  all unified/direct scene generation.
+## M8.3i — runtime render adapter API decision
 
-The deleted tests asserted behavior of the historical loader itself. Current
-world-position, animation parsing, frame-dimension validation, determinism,
-and empty/static package behavior are exercised through the direct/unified
-runtime path rather than through the retired compatibility loader.
+M7.8a historically documented `static_sprite_to_render_node()`,
+`animated_sprite_to_render_node()`, and `merge_render_nodes()` as a public API.
+The compatibility review therefore handled the surface explicitly rather than
+silently deleting it.
 
-M8.3h does not remove or change `runtime_render_adapter`; its API compatibility
-status is a separate decision. Historical M7.8a documentation explicitly
-called `static_sprite_to_render_node()`, `animated_sprite_to_render_node()`,
-and `merge_render_nodes()` a public API, so those functions must not be
-silently deleted as part of loader cleanup.
+Current evidence shows:
+
+- the API is not re-exported from top-level `g2a` or `g2a.backend.ace`;
+- no CLI, builder, g2stack, qualification, or unified-runtime path calls it;
+- after M8.3g/M8.3h, its remaining repository callers are its own compatibility
+  tests;
+- Godot2Amiga is still pre-alpha (`0.6.1a0`).
+
+M8.3i therefore retires the implementation-module compatibility API instead
+of preserving a shim or deprecation wrapper. It removes:
+
+- `src/g2a/runtime_render_adapter.py`;
+- `tests/test_m78a_runtime_render_adapter.py`;
+- `tests/test_m78c1_runtime_adapter_hotfix.py`.
+
+The historical M7.8a document is retained and amended to record the retirement.
+`RuntimeAnimatedSceneSprite` and current animation codegen remain untouched.
 
 ## Runtime gate policy
 
-M8.3g and M8.3h do not modify the builder, direct loader, shared animation
-codegen, generated-C implementation, package formats, or ACE pin. Host
-regression coverage is therefore the appropriate immediate gate for these
-isolated compatibility deletions.
+M8.3g–M8.3i do not modify the supported builder, direct loader, generated-C
+implementation, package/display/asset formats, or ACE pin. Host regression
+coverage is the immediate gate for these isolated compatibility deletions.
 
 The final loader/model retirement milestone must rerun the full M8.2b visible
 qualification.
 
 ## Next cleanup boundary
 
-The next milestone should review `runtime_render_adapter` as an explicitly
-documented historical public API before deciding whether to retain, deprecate,
-or retire it. The old static loader/model surface should remain separate from
-that decision.
+The remaining major legacy runtime surface is the static loader/model family in
+`g2a.backend.ace.runtime_scene`. The next milestone should inventory its
+historical tests and map each useful transform/visibility/z-order/asset/palette
+semantic to current direct-loader/unified coverage before deleting anything.
+
+Recommended next milestone:
+
+**M8.3j — Static Runtime Loader/Model Compatibility Review**
