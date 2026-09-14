@@ -30,13 +30,13 @@ The direct loader has no dependency on `load_runtime_scene`,
 |---|---|---:|---|---|
 | `runtime_direct_scene.load_direct_runtime_render_nodes` | builder/unified path/tests | Yes | ACTIVE | retain |
 | `runtime_animated_scene.RuntimeAnimatedSceneSprite` | animation adapter/codegen/tests | Yes | SHARED | retain |
-| `runtime_animated_scene.load_runtime_animated_sprites` | `runtime_render_scene` + historical animated-loader tests | No | LEGACY-TEST-ONLY | candidate for later retirement after adapter review |
-| `backend.ace.runtime_scene.load_runtime_scene` | `runtime_render_scene` + historical static-loader/example tests | No | LEGACY-TEST-ONLY | candidate for later retirement after semantic coverage review |
+| `runtime_animated_scene.load_runtime_animated_sprites` | historical animated-loader tests | No | LEGACY-TEST-ONLY | candidate for later retirement after adapter review |
+| `backend.ace.runtime_scene.load_runtime_scene` | historical static-loader/example tests | No | LEGACY-TEST-ONLY | candidate for later retirement after semantic coverage review |
 | `backend.ace.runtime_scene.RuntimeScene` / `RuntimeSprite` | historical static-loader tests/adapters | No production use | COMPATIBILITY | retain until static compatibility tests are migrated |
-| `runtime_render_scene.load_runtime_render_nodes` | compatibility/no-cycle test; historical docs | No | COMPATIBILITY | smallest safe next retirement candidate |
-| `runtime_render_adapter.merge_render_nodes` | compatibility adapter tests | No production use | COMPATIBILITY | retain for now; review after `runtime_render_scene` retirement |
+| `runtime_render_scene.load_runtime_render_nodes` | retired in M8.3g | No | RETIRED | removed |
+| `runtime_render_adapter.merge_render_nodes` | compatibility adapter tests | No production use | COMPATIBILITY | retain for now; reassess after M8.3g |
 | `runtime_render_adapter.static_sprite_to_render_node` | compatibility adapter tests | No production use | COMPATIBILITY | retain for now |
-| `runtime_render_adapter.animated_sprite_to_render_node` | adapter/codegen tests | No production builder call | COMPATIBILITY/SHARED TEST SURFACE | do not remove with M8.3g |
+| `runtime_render_adapter.animated_sprite_to_render_node` | adapter/codegen tests | No production builder call | COMPATIBILITY/SHARED TEST SURFACE | retain |
 
 ## Animated loader findings
 
@@ -57,7 +57,7 @@ supported package-to-main generation.
 ## Static loader findings
 
 `load_runtime_scene()` and the `RuntimeScene`/`RuntimeSprite` models are not
-used by the supported builder. They remain heavily covered by historical
+used by the supported builder. They remain covered by historical
 static-loader/example tests for transforms, visibility, ordering, palette
 association, and runtime metadata.
 
@@ -67,67 +67,54 @@ assertion has an explicit replacement or is intentionally retired.
 
 ## `runtime_render_scene` compatibility finding
 
-`runtime_render_scene.load_runtime_render_nodes()` is a compatibility adapter
-that combines the historical static loader and animated loader via
-`merge_render_nodes()`.
+Before M8.3g, `runtime_render_scene.load_runtime_render_nodes()` was a
+compatibility adapter that combined the historical static loader and animated
+loader via `merge_render_nodes()`.
 
-It is not used by `g2a-build`, `g2stack`, the M8.2b qualification workflow, or
-the direct unified loader.
+It was not used by `g2a-build`, `g2stack`, the M8.2b qualification workflow,
+or the direct unified loader. Its final repository protection was the M7.8c.1
+no-cycle test that imported the function and asserted it was callable. The
+historical hotfix existed because this obsolete adapter once required a local
+import to avoid an eager `g2a.backend.ace` import cycle; that guarantee did not
+protect the current production builder path.
 
-The remaining direct repository protection is the M7.8c.1 no-cycle test that
-imports the function and asserts it is callable. The historical hotfix exists
-because this adapter once required a local import to avoid an eager
-`g2a.backend.ace` import cycle. That import-cycle guarantee protects the old
-compatibility adapter, not the current production builder path.
+M8.3g therefore retires the compatibility surface itself and removes only that
+obsolete no-cycle assertion. The remaining runtime-adapter compatibility tests
+stay intact.
 
-Accordingly this surface is no longer **UNCERTAIN**. It is classified
-**COMPATIBILITY**.
+## M8.3g implementation
 
-## Smallest safe next deletion
+M8.3g performs the smallest deletion identified by this review:
 
-The smallest isolated next cleanup is:
+- removes `src/g2a/runtime_render_scene.py`;
+- removes only `test_unified_loader_import_has_no_cycle()` from
+  `tests/test_m78c1_runtime_adapter_hotfix.py`;
+- preserves all other legacy-adapter regression tests;
+- preserves `RuntimeAnimatedSceneSprite` and all current animation codegen;
+- preserves `load_runtime_animated_sprites()` and `load_runtime_scene()` for
+  separate retirement decisions;
+- leaves the supported direct loader and ACE builder untouched.
 
-**M8.3g — Retire `runtime_render_scene` compatibility adapter**
-
-That milestone may remove:
-
-- `src/g2a/runtime_render_scene.py`;
-- the no-cycle test whose sole purpose is to prove that compatibility module
-  imports successfully;
-- documentation wording that presents it as an unresolved surface.
-
-It must not remove in the same change:
-
-- `RuntimeAnimatedSceneSprite`;
-- `runtime_animated_codegen` or animation adapter/codegen helpers;
-- `load_runtime_animated_sprites`;
-- `load_runtime_scene`;
-- `RuntimeScene` / `RuntimeSprite`;
-- `runtime_render_adapter` helpers unless they become independently proven
-  dead in a later review.
-
-Keeping those boundaries makes M8.3g a small compatibility-surface deletion,
-not a broad loader/model rewrite.
+No package/display/asset contract, generated-C implementation, ACE pin, or
+M8.2b qualification workflow is changed by M8.3g.
 
 ## Runtime gate policy
 
-For M8.3g, host regression tests are sufficient if:
+For M8.3g, host regression tests are sufficient because the builder and direct
+loader are untouched, no shared animation/codegen file changes, and the removed
+module had no supported production caller. A visible FS-UAE rerun is not
+required for this isolated compatibility-module removal.
 
-- the builder and direct loader remain byte-for-byte untouched;
-- generated unified `main.c` is unchanged;
-- no shared animation/codegen file changes;
-- M8.2b orchestration tests remain green.
+The final loader/model retirement milestone must rerun the full M8.2b visible
+qualification.
 
-A visible FS-UAE rerun is not required for that isolated compatibility-module
-removal. The final loader/model retirement milestone must rerun the full M8.2b
-visible qualification.
+## Next cleanup boundary
 
-## Conclusion
+After M8.3g, reassess the remaining compatibility adapter helpers and loader
+surfaces independently. In particular, do not infer that
+`RuntimeAnimatedSceneSprite` is removable merely because the historical
+loader chain has shrunk: it remains shared by current animation codegen.
 
-The supported runtime path is already independent of the historical loader
-chain. `runtime_render_scene.load_runtime_render_nodes()` is now an isolated
-compatibility surface rather than an unresolved production dependency.
-
-The next safe cleanup boundary is therefore M8.3g: retire that compatibility
-adapter first, then reassess which legacy loader/adaptor symbols become truly
-orphaned before deleting anything else.
+The next milestone should inventory which symbols in `runtime_render_adapter`
+are now test-only and whether the historical animated loader can be retired
+without disturbing the shared animated scene model.
