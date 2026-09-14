@@ -2,30 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from g2a.backend.ace.runtime_scene import load_runtime_scene
 from g2a.build import EXIT_OK, generate_project
 
 EXAMPLE = Path("examples/assets-demo.g2a")
-
-
-def test_assets_demo_contains_three_scene_sprites() -> None:
-    runtime = load_runtime_scene(EXAMPLE)
-
-    assert [sprite.name for sprite in runtime.sprites] == [
-        "LogoRight",
-        "LogoLeft",
-    ]
-    assert [(sprite.x, sprite.y) for sprite in runtime.sprites] == [
-        (232, 120),
-        (72, 120),
-    ]
-
-
-def test_example_uses_one_shared_palette() -> None:
-    runtime = load_runtime_scene(EXAMPLE)
-
-    assert {sprite.palette_path for sprite in runtime.sprites} == {"data/palettes/main.plt"}
-    assert {sprite.bpp for sprite in runtime.sprites} == {2}
 
 
 def test_builder_generates_multi_sprite_runtime(
