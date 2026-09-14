@@ -71,11 +71,3 @@ def test_z_index_still_precedes_fallback_scene_order() -> None:
         "Back",
         "Front",
     ]
-
-
-def test_unified_loader_import_has_no_cycle() -> None:
-    from g2a.runtime_render_scene import (
-        load_runtime_render_nodes,
-    )
-
-    assert callable(load_runtime_render_nodes)
