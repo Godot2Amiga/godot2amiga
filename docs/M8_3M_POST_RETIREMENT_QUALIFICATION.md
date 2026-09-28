@@ -33,12 +33,22 @@ qualification gate for that cleanup sequence.
     - canonical validate: PASS
     - canonical dump: PASS
   - Godot plugin parse/load: PASS
-- pinned ACE/Bebbo build: PENDING
+- pinned ACE/Bebbo build: PASS
+  - workflow: `M8.3m amiga-dev qualification`
+  - run: `36467986794` / run number `12`
+  - commit: `1dd29475a670082f1111e0db307e15a20c22282d`
+  - ACE: `dc0674c2d2cf328386574b9ac71bbe6747db470e`
+  - Bebbo 68000/libnix (`-noixemul`): PASS
+  - converted assets and unified project generation: PASS
+  - m68k compile/link: PASS
+  - runtime staging: PASS
+  - staged executable: 151880 bytes
+  - staged executable SHA-256: `effd7a3bedde454eedcde21bbfe65adc1dc948e815498bc8c1c8e8eedfee9098`
 - visible FS-UAE runtime observation: PENDING
 - final M8.3 cleanup verdict: PENDING
 
-No runtime PASS is claimed until evidence exists for the pinned build and visible
-FS-UAE gates.
+The mechanical pinned build gate is qualified. No runtime PASS is claimed until
+the visible FS-UAE gate has human-confirmed evidence.
 
 ## Runtime baseline to preserve
 
@@ -56,8 +66,8 @@ feature milestone.
 
 ## Next executable gate
 
-The remaining qualification requires the local Bebbo/ACE/FS-UAE environment and
-local Kickstart ROM. From the repository checkout at the PR head, run:
+The remaining qualification is the visible FS-UAE gate and requires the local
+Bebbo/ACE/FS-UAE environment and local Kickstart ROM. From the repository checkout at the PR head, run:
 
 ```bash
 git fetch origin
