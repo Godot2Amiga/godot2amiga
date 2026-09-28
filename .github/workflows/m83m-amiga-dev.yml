@@ -1,0 +1,105 @@
+name: M8.3m amiga-dev qualification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  AMIGA_DEV_IMAGE: ghcr.io/ploos-as/amiga-dev:edge
+  ACE_REPOSITORY: https://github.com/AmigaPorts/ACE.git
+  ACE_REVISION: dc0674c2d2cf328386574b9ac71bbe6747db470e
+
+jobs:
+  amiga-dev-q1:
+    name: amiga-dev Q1 mechanical qualification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull qualified amiga-dev image
+        run: docker pull "$AMIGA_DEV_IMAGE"
+
+      - name: Run pinned ACE/Bebbo qualification
+        run: |
+          mkdir -p m83m-q1-evidence
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD:/workspace:ro" \
+            -v "$PWD/m83m-q1-evidence:/evidence" \
+            -w /workspace \
+            -e ACE_REPOSITORY \
+            -e ACE_REVISION \
+            "$AMIGA_DEV_IMAGE" \
+            sh -ec '
+              amiga-check
+              amiga-toolchain-info
+              git clone "$ACE_REPOSITORY" /tmp/ace
+              git -C /tmp/ace checkout --detach "$ACE_REVISION"
+              test "$(git -C /tmp/ace rev-parse HEAD)" = "$ACE_REVISION"
+              test -z "$(git -C /tmp/ace status --porcelain --untracked-files=normal)"
+
+              cmake -S /tmp/ace/tools -B /tmp/ace-tools-build -DCMAKE_BUILD_TYPE=Release
+              cmake --build /tmp/ace-tools-build --parallel "$(nproc)" --target palette_conv bitmap_conv
+              test -x /tmp/ace/tools/bin/palette_conv
+              test -x /tmp/ace/tools/bin/bitmap_conv
+              /tmp/ace/tools/bin/palette_conv --help >/dev/null 2>&1 || test "$?" -le 1
+              /tmp/ace/tools/bin/bitmap_conv --help >/dev/null 2>&1 || test "$?" -le 1
+
+              python3 -m venv /tmp/g2a-venv
+              /tmp/g2a-venv/bin/pip install --disable-pip-version-check /workspace
+
+              printf "%s\\n" \
+                "set(CMAKE_SYSTEM_NAME Generic)" \
+                "set(AMIGA TRUE)" \
+                "set(M68K_COMPILER Bebbo)" \
+                "set(CMAKE_C_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
+                "set(CMAKE_C_FLAGS_INIT \"-m68000 -noixemul\")" \
+                "set(CMAKE_EXE_LINKER_FLAGS_INIT \"-noixemul\")" \
+                "set(CMAKE_CXX_COMPILER /opt/amiga/bin/m68k-amigaos-g++)" \
+                "set(CMAKE_ASM_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
+                "set(CMAKE_AR /opt/amiga/bin/m68k-amigaos-ar)" \
+                "set(CMAKE_RANLIB /opt/amiga/bin/m68k-amigaos-ranlib)" \
+                > /tmp/m68k-amigaos.cmake
+
+              set +e
+              G2A_ACE_ROOT=/tmp/ace \
+              G2A_TOOLCHAIN_FILE=/tmp/m68k-amigaos.cmake \
+              G2A_TOOLCHAIN_PATH=/opt/amiga \
+                /tmp/g2a-venv/bin/python /workspace/scripts/qualify-m82-runtime.py \
+                  --no-launch --jobs "$(nproc)" \
+                  --work-directory /tmp/g2a-m83m-q1
+              qualification_status=$?
+              set -e
+
+              cp -a /tmp/g2a-m83m-q1 /evidence/workdir
+              mkdir -p /evidence/classic-payload
+              cp -a /tmp/g2a-m83m-q1/fs-uae-runtime/DH0/. /evidence/classic-payload/
+              cp /workspace/qualification/m83m/amiga-runtime.json /evidence/classic-payload/amiga-runtime.json
+              cp /workspace/qualification/m83m/run-q4 /evidence/classic-payload/run-q4
+              amiga-toolchain-info > /evidence/amiga-toolchain-info.txt
+              printf "%s\n" "$ACE_REVISION" > /evidence/ace-revision.txt
+              printf "%s\n" "$qualification_status" > /evidence/qualification-exit-status.txt
+              if test -d /tmp/g2a-m83m-q1/fs-uae-runtime/Test; then
+                find /tmp/g2a-m83m-q1/fs-uae-runtime/Test -type f -exec sha256sum {} + \
+                  > /evidence/payload-sha256.txt
+              fi
+              exit "$qualification_status"
+            '
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m83m-amiga-dev-q1-evidence
+          path: m83m-q1-evidence/
+          if-no-files-found: error

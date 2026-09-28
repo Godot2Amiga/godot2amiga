@@ -1,0 +1,5 @@
+; M8.3m Q4 execution wrapper
+Echo "G2A_M83M_Q4_STARTED" >T:g2a-m83m-q4.log
+DH0:m8_2_mixed_qualification
+Echo "G2A_M83M_Q4_RETURNED" >>T:g2a-m83m-q4.log
+Copy T:g2a-m83m-q4.log TEST:g2a-m83m-q4.log
