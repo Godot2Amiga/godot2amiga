@@ -1,0 +1,17 @@
+{
+  "schema": "amiga-runtime-contract-v1",
+  "payload": {
+    "program": "m8_2_mixed_qualification",
+    "script": "run-q4"
+  },
+  "requirements": {
+    "bsdsocket_library": false
+  },
+  "result": {
+    "log": "g2a-m83m-q4.log",
+    "required_lines": [
+      "G2A_M83M_Q4_STARTED",
+      "G2A_M83M_Q4_RETURNED"
+    ]
+  }
+}
