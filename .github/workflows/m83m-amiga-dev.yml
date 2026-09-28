@@ -83,6 +83,10 @@ jobs:
               set -e
 
               cp -a /tmp/g2a-m83m-q1 /evidence/workdir
+              mkdir -p /evidence/classic-payload
+              cp -a /tmp/g2a-m83m-q1/fs-uae-runtime/DH0/. /evidence/classic-payload/
+              cp /workspace/qualification/m83m/amiga-runtime.json /evidence/classic-payload/amiga-runtime.json
+              cp /workspace/qualification/m83m/run-q4 /evidence/classic-payload/run-q4
               amiga-toolchain-info > /evidence/amiga-toolchain-info.txt
               printf "%s\n" "$ACE_REVISION" > /evidence/ace-revision.txt
               printf "%s\n" "$qualification_status" > /evidence/qualification-exit-status.txt
