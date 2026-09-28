@@ -53,14 +53,14 @@ jobs:
               python3 -m venv /tmp/g2a-venv
               /tmp/g2a-venv/bin/pip install --disable-pip-version-check /workspace
 
-              cat > /tmp/m68k-amigaos.cmake <<EOF
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_C_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)
-set(CMAKE_CXX_COMPILER /opt/amiga/bin/m68k-amigaos-g++)
-set(CMAKE_ASM_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)
-set(CMAKE_AR /opt/amiga/bin/m68k-amigaos-ar)
-set(CMAKE_RANLIB /opt/amiga/bin/m68k-amigaos-ranlib)
-EOF
+              printf "%s\\n" \
+                "set(CMAKE_SYSTEM_NAME Generic)" \
+                "set(CMAKE_C_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
+                "set(CMAKE_CXX_COMPILER /opt/amiga/bin/m68k-amigaos-g++)" \
+                "set(CMAKE_ASM_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
+                "set(CMAKE_AR /opt/amiga/bin/m68k-amigaos-ar)" \
+                "set(CMAKE_RANLIB /opt/amiga/bin/m68k-amigaos-ranlib)" \
+                > /tmp/m68k-amigaos.cmake
 
               G2A_ACE_ROOT=/tmp/ace \
               G2A_TOOLCHAIN_FILE=/tmp/m68k-amigaos.cmake \
