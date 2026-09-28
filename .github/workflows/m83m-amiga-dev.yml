@@ -1,8 +1,6 @@
 name: M8.3m amiga-dev qualification
 
 on:
-  push:
-    branches: [m8.3m-post-retirement-qualification]
   pull_request:
   workflow_dispatch:
 
@@ -62,18 +60,25 @@ jobs:
                 "set(CMAKE_RANLIB /opt/amiga/bin/m68k-amigaos-ranlib)" \
                 > /tmp/m68k-amigaos.cmake
 
+              set +e
               G2A_ACE_ROOT=/tmp/ace \
               G2A_TOOLCHAIN_FILE=/tmp/m68k-amigaos.cmake \
               G2A_TOOLCHAIN_PATH=/opt/amiga \
                 /tmp/g2a-venv/bin/python /workspace/scripts/qualify-m82-runtime.py \
                   --no-launch --jobs "$(nproc)" \
                   --work-directory /tmp/g2a-m83m-q1
+              qualification_status=$?
+              set -e
 
-              cp -a /tmp/g2a-m83m-q1/fs-uae-runtime/. /evidence/
+              cp -a /tmp/g2a-m83m-q1 /evidence/workdir
               amiga-toolchain-info > /evidence/amiga-toolchain-info.txt
               printf "%s\n" "$ACE_REVISION" > /evidence/ace-revision.txt
-              sha256sum /tmp/g2a-m83m-q1/fs-uae-runtime/Test/* \
-                > /evidence/payload-sha256.txt
+              printf "%s\n" "$qualification_status" > /evidence/qualification-exit-status.txt
+              if test -d /tmp/g2a-m83m-q1/fs-uae-runtime/Test; then
+                find /tmp/g2a-m83m-q1/fs-uae-runtime/Test -type f -exec sha256sum {} + \
+                  > /evidence/payload-sha256.txt
+              fi
+              exit "$qualification_status"
             '
 
       - uses: actions/upload-artifact@v4
