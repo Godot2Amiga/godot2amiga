@@ -61,6 +61,8 @@ jobs:
 
               printf "%s\\n" \
                 "set(CMAKE_SYSTEM_NAME Generic)" \
+                "set(AMIGA TRUE)" \
+                "set(M68K_COMPILER Bebbo)" \
                 "set(CMAKE_C_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
                 "set(CMAKE_CXX_COMPILER /opt/amiga/bin/m68k-amigaos-g++)" \
                 "set(CMAKE_ASM_COMPILER /opt/amiga/bin/m68k-amigaos-gcc)" \
