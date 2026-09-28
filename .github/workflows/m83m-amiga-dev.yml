@@ -49,6 +49,13 @@ jobs:
               test "$(git -C /tmp/ace rev-parse HEAD)" = "$ACE_REVISION"
               test -z "$(git -C /tmp/ace status --porcelain --untracked-files=normal)"
 
+              cmake -S /tmp/ace/tools -B /tmp/ace-tools-build -DCMAKE_BUILD_TYPE=Release
+              cmake --build /tmp/ace-tools-build --parallel "$(nproc)" --target palette_conv bitmap_conv
+              test -x /tmp/ace/tools/bin/palette_conv
+              test -x /tmp/ace/tools/bin/bitmap_conv
+              /tmp/ace/tools/bin/palette_conv --help >/dev/null 2>&1 || test "$?" -le 1
+              /tmp/ace/tools/bin/bitmap_conv --help >/dev/null 2>&1 || test "$?" -le 1
+
               python3 -m venv /tmp/g2a-venv
               /tmp/g2a-venv/bin/pip install --disable-pip-version-check /workspace
 
