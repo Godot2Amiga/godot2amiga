@@ -34,6 +34,7 @@ jobs:
         run: |
           mkdir -p m83m-q1-evidence
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
             -v "$PWD:/workspace:ro" \
             -v "$PWD/m83m-q1-evidence:/evidence" \
             -w /workspace \
