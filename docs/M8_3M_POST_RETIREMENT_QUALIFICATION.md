@@ -44,6 +44,13 @@ qualification gate for that cleanup sequence.
   - runtime staging: PASS
   - staged executable: 151880 bytes
   - staged executable SHA-256: `effd7a3bedde454eedcde21bbfe65adc1dc948e815498bc8c1c8e8eedfee9098`
+- amiga-runtime Q4 infrastructure: PASS
+  - amiga-runtime CI: run `380` / `36473008741`
+  - A600 profile: `a600-os3`
+  - project-neutral artifact contract discovery: PASS
+  - Godot2Amiga classic payload generation: PASS
+  - Q4 contract and guest wrapper: READY
+- Classic AmigaOS FS-UAE contract execution: PENDING
 - visible FS-UAE runtime observation: PENDING
 - final M8.3 cleanup verdict: PENDING
 
